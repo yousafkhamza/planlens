@@ -23,6 +23,8 @@ All notable changes to this project are documented here. The format follows [Kee
 - `action.yml` failed to load on GitHub (unquoted `: ` in a description); manifest, workflow and example YAML are now validated in tests.
 - Pages deployment workflow restored.
 
+
+
 ## [1.0.0] - 2026-11-23
 
 ### Added

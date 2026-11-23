@@ -57,12 +57,14 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "fixtures": "node scripts/gen-fixtures.mjs",
+    "og": "node scripts/gen-og.mjs",
     "check": "npm run typecheck && npm run lint && npm run test:coverage && npm run build",
     "prepublishOnly": "npm run check"
   },
   "devDependencies": {
     "@anthropic-ai/sdk": "^1.12.0",
     "@biomejs/biome": "^2.6.8",
+    "@resvg/resvg-js": "^2.6.2",
     "@types/jsdom": "^21.1.7",
     "@types/node": "^22.20.5",
     "@vitest/coverage-v8": "^5.1.1",

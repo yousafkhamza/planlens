@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>planlens rule reference — 42 Terraform plan checks (security, data loss, IAM, cost)</title>
+  <meta name="description" content="Every planlens rule explained: destroyed or replaced stateful resources, count index shifts, 0.0.0.0/0 ingress, IAM wildcards and privilege escalation, OIDC trust without sub, public buckets, plaintext secrets and cost budgets — with fixes.">
+  <link rel="canonical" href="https://yousafkhamza.github.io/planlens/rules.html">
+  <meta name="robots" content="index, follow, max-image-preview:large">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="planlens">
+  <meta property="og:title" content="planlens rule reference — 42 Terraform plan checks">
+  <meta property="og:description" content="What each planlens rule catches in a Terraform plan, why it matters, and how to fix it.">
+  <meta property="og:url" content="https://yousafkhamza.github.io/planlens/rules.html">
+  <meta property="og:image" content="https://yousafkhamza.github.io/planlens/assets/og.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="https://yousafkhamza.github.io/planlens/assets/og.png">
+  <meta name="theme-color" content="#0b0f17">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'none'">
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"planlens rule reference — 42 Terraform plan checks","url":"https://yousafkhamza.github.io/planlens/rules.html","image":"https://yousafkhamza.github.io/planlens/assets/og.png","author":{"@type":"Person","name":"Yousaf K Hamza","url":"https://yousafkhamza.github.io"},"about":["Terraform","Infrastructure as Code","DevSecOps"]}</script>
+</head>
+<body>
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="./"><svg viewBox="0 0 32 32" width="28" height="28" aria-hidden="true"><rect width="32" height="32" rx="8" class="brand-bg"/><circle cx="14" cy="14" r="7" fill="none" stroke="currentColor" stroke-width="3"/><path d="M19 19l7 7" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg><span>planlens</span></a>
+      <nav aria-label="Main"><a href="./#try">Try it</a><a href="./#install">Install</a><a href="https://github.com/yousafkhamza/planlens">GitHub</a></nav>
+    </div>
+  </header>
+  <main class="section">
+    <div class="wrap">
+      <p class="eyebrow"><a href="./">planlens</a> / rules</p>
+      <h1>Rule reference</h1>
+      <p class="lead">42 checks that run against <code>terraform show -json</code> output. Most report only what <strong>this plan introduces</strong>, so existing debt isn't re-reported on every PR. Change severities with <code>severity_overrides</code>, turn rules off with <code>disable</code>, or accept a finding with <code>ignore</code> in <code>.planlens.yml</code>.</p>
+      <div class="rule-grid">
+        <a class="rule" href="#pl001"><header><span class="sev sev-critical">CRITICAL</span><span class="cat">data-loss</span><span class="rid">PL001</span></header><h3>Stateful resource will be destroyed</h3></a>
+        <a class="rule" href="#pl002"><header><span class="sev sev-critical">CRITICAL</span><span class="cat">data-loss</span><span class="rid">PL002</span></header><h3>Stateful resource will be replaced (destroy + create)</h3></a>
+        <a class="rule" href="#pl003"><header><span class="sev sev-high">HIGH</span><span class="cat">availability</span><span class="rid">PL003</span></header><h3>High-impact resource will be replaced or destroyed</h3></a>
+        <a class="rule" href="#pl004"><header><span class="sev sev-low">LOW</span><span class="cat">availability</span><span class="rid">PL004</span></header><h3>Resource will be replaced or destroyed</h3></a>
+        <a class="rule" href="#pl005"><header><span class="sev sev-high">HIGH</span><span class="cat">availability</span><span class="rid">PL005</span></header><h3>Large number of resources destroyed</h3></a>
+        <a class="rule" href="#pl006"><header><span class="sev sev-high">HIGH</span><span class="cat">refactor</span><span class="rid">PL006</span></header><h3>Refactor will destroy and recreate a resource</h3></a>
+        <a class="rule" href="#pl007"><header><span class="sev sev-medium">MEDIUM</span><span class="cat">drift</span><span class="rid">PL007</span></header><h3>Infrastructure drifted from Terraform state</h3></a>
+        <a class="rule" href="#pl008"><header><span class="sev sev-info">INFO</span><span class="cat">hygiene</span><span class="rid">PL008</span></header><h3>Resource will be imported</h3></a>
+        <a class="rule" href="#pl009"><header><span class="sev sev-info">INFO</span><span class="cat">refactor</span><span class="rid">PL009</span></header><h3>Resource address moved</h3></a>
+        <a class="rule" href="#pl101"><header><span class="sev sev-high">HIGH</span><span class="cat">data-loss</span><span class="rid">PL101</span></header><h3>Deletion protection disabled</h3></a>
+        <a class="rule" href="#pl102"><header><span class="sev sev-medium">MEDIUM</span><span class="cat">data-loss</span><span class="rid">PL102</span></header><h3>Final snapshot disabled on database</h3></a>
+        <a class="rule" href="#pl103"><header><span class="sev sev-high">HIGH</span><span class="cat">data-loss</span><span class="rid">PL103</span></header><h3>Backups disabled or retention reduced</h3></a>
+        <a class="rule" href="#pl104"><header><span class="sev sev-high">HIGH</span><span class="cat">security</span><span class="rid">PL104</span></header><h3>Encryption disabled</h3></a>
+        <a class="rule" href="#pl105"><header><span class="sev sev-medium">MEDIUM</span><span class="cat">data-loss</span><span class="rid">PL105</span></header><h3>S3 versioning suspended</h3></a>
+        <a class="rule" href="#pl106"><header><span class="sev sev-medium">MEDIUM</span><span class="cat">data-loss</span><span class="rid">PL106</span></header><h3>Force-destroy / immediate deletion enabled</h3></a>
+        <a class="rule" href="#pl107"><header><span class="sev sev-medium">MEDIUM</span><span class="cat">data-loss</span><span class="rid">PL107</span></header><h3>Point-in-time recovery disabled</h3></a>
+        <a class="rule" href="#pl108"><header><span class="sev sev-low">LOW</span><span class="cat">security</span><span class="rid">PL108</span></header><h3>KMS key rotation disabled</h3></a>
+        <a class="rule" href="#pl109"><header><span class="sev sev-medium">MEDIUM</span><span class="cat">availability</span><span class="rid">PL109</span></header><h3>High availability reduced</h3></a>
+        <a class="rule" href="#pl110"><header><span class="sev sev-high">HIGH</span><span class="cat">security</span><span class="rid">PL110</span></header><h3>Security monitoring or logging removed</h3></a>
+        <a class="rule" href="#pl111"><header><span class="sev sev-medium">MEDIUM</span><span class="cat">availability</span><span class="rid">PL111</span></header><h3>Major engine or cluster version upgrade</h3></a>
+        <a class="rule" href="#pl112"><header><span class="sev sev-medium">MEDIUM</span><span class="cat">availability</span><span class="rid">PL112</span></header><h3>Capacity scaled to zero</h3></a>
+        <a class="rule" href="#pl201"><header><span class="sev sev-critical">CRITICAL</span><span class="cat">network</span><span class="rid">PL201</span></header><h3>Ingress opened to the internet</h3></a>
+        <a class="rule" href="#pl202"><header><span class="sev sev-high">HIGH</span><span class="cat">network</span><span class="rid">PL202</span></header><h3>Database publicly accessible</h3></a>
+        <a class="rule" href="#pl203"><header><span class="sev sev-medium">MEDIUM</span><span class="cat">network</span><span class="rid">PL203</span></header><h3>Load balancer becomes internet-facing</h3></a>
+        <a class="rule" href="#pl204"><header><span class="sev sev-medium">MEDIUM</span><span class="cat">network</span><span class="rid">PL204</span></header><h3>Kubernetes API endpoint open to the internet</h3></a>
+        <a class="rule" href="#pl205"><header><span class="sev sev-high">HIGH</span><span class="cat">network</span><span class="rid">PL205</span></header><h3>S3 Block Public Access weakened</h3></a>
+        <a class="rule" href="#pl206"><header><span class="sev sev-high">HIGH</span><span class="cat">network</span><span class="rid">PL206</span></header><h3>Storage made public</h3></a>
+        <a class="rule" href="#pl207"><header><span class="sev sev-medium">MEDIUM</span><span class="cat">security</span><span class="rid">PL207</span></header><h3>IMDSv1 allowed on EC2</h3></a>
+        <a class="rule" href="#pl301"><header><span class="sev sev-critical">CRITICAL</span><span class="cat">iam</span><span class="rid">PL301</span></header><h3>IAM policy grants full admin (*:*)</h3></a>
+        <a class="rule" href="#pl302"><header><span class="sev sev-high">HIGH</span><span class="cat">iam</span><span class="rid">PL302</span></header><h3>IAM policy grants service-wide wildcard on all resources</h3></a>
+        <a class="rule" href="#pl303"><header><span class="sev sev-high">HIGH</span><span class="cat">iam</span><span class="rid">PL303</span></header><h3>IAM policy allows privilege escalation</h3></a>
+        <a class="rule" href="#pl304"><header><span class="sev sev-critical">CRITICAL</span><span class="cat">iam</span><span class="rid">PL304</span></header><h3>Admin-level AWS managed policy attached</h3></a>
+        <a class="rule" href="#pl305"><header><span class="sev sev-critical">CRITICAL</span><span class="cat">iam</span><span class="rid">PL305</span></header><h3>Resource policy allows anyone (Principal &quot;*&quot;)</h3></a>
+        <a class="rule" href="#pl306"><header><span class="sev sev-critical">CRITICAL</span><span class="cat">iam</span><span class="rid">PL306</span></header><h3>OIDC trust policy not restricted to a subject</h3></a>
+        <a class="rule" href="#pl307"><header><span class="sev sev-critical">CRITICAL</span><span class="cat">iam</span><span class="rid">PL307</span></header><h3>Role trust policy allows any AWS principal</h3></a>
+        <a class="rule" href="#pl308"><header><span class="sev sev-medium">MEDIUM</span><span class="cat">secrets</span><span class="rid">PL308</span></header><h3>Long-lived IAM access key created</h3></a>
+        <a class="rule" href="#pl309"><header><span class="sev sev-high">HIGH</span><span class="cat">iam</span><span class="rid">PL309</span></header><h3>Lambda callable by anyone</h3></a>
+        <a class="rule" href="#pl310"><header><span class="sev sev-high">HIGH</span><span class="cat">iam</span><span class="rid">PL310</span></header><h3>Privileged Azure role assigned</h3></a>
+        <a class="rule" href="#pl311"><header><span class="sev sev-high">HIGH</span><span class="cat">iam</span><span class="rid">PL311</span></header><h3>GCP IAM grants public or primitive role</h3></a>
+        <a class="rule" href="#pl401"><header><span class="sev sev-high">HIGH</span><span class="cat">secrets</span><span class="rid">PL401</span></header><h3>Plaintext secret in resource configuration</h3></a>
+        <a class="rule" href="#pl402"><header><span class="sev sev-high">HIGH</span><span class="cat">secrets</span><span class="rid">PL402</span></header><h3>Output exposes a secret without `sensitive = true`</h3></a>
+        <a class="rule" href="#pl501"><header><span class="sev sev-high">HIGH</span><span class="cat">cost</span><span class="rid">PL501</span></header><h3>Monthly cost increase above budget</h3></a>
+      </div>
+      <section class="card rule-doc" id="pl001">
+        <h2>PL001 · Stateful resource will be destroyed</h2>
+        <p><span class="sev sev-critical">CRITICAL</span> <span class="muted">default severity · data-loss</span></p>
+        <p>A resource that holds data (database, bucket, volume, key, DNS zone, queue…) is deleted. Unless backups exist and were tested, the data is gone.</p>
+        <p><strong>Fix:</strong> Confirm the deletion is intended and a backup/snapshot exists. Add <code>lifecycle { prevent_destroy = true }</code> to resources that must never be destroyed. If you only want Terraform to stop managing it, use a <code>removed { from = ... lifecycle { destroy = false } }</code> block (Terraform ≥ 1.7) instead of deleting the block.</p>
+      </section>
+      <section class="card rule-doc" id="pl002">
+        <h2>PL002 · Stateful resource will be replaced (destroy + create)</h2>
+        <p><span class="sev sev-critical">CRITICAL</span> <span class="muted">default severity · data-loss</span></p>
+        <p>Terraform must destroy and recreate a resource that holds data because an attribute that cannot be changed in place was modified. The new resource starts empty.</p>
+        <p><strong>Fix:</strong> Revert the attribute that forces replacement, or plan a migration (snapshot/restore, blue-green). For RDS, many changes (e.g. engine version) can be done in place; check which attribute is listed under 'Forced by'.</p>
+      </section>
+      <section class="card rule-doc" id="pl003">
+        <h2>PL003 · High-impact resource will be replaced or destroyed</h2>
+        <p><span class="sev sev-high">HIGH</span> <span class="muted">default severity · availability</span></p>
+        <p>A resource with a large blast radius (cluster, load balancer, network, instance, IAM role, DNS record, generated secret…) is replaced or destroyed. Expect downtime, new IDs/IPs/ARNs, or broken references.</p>
+        <p><strong>Fix:</strong> Check the 'Forced by' attribute and whether it can be changed in place. Use <code>create_before_destroy</code> for zero-downtime replacement where supported, and schedule the change in a maintenance window.</p>
+      </section>
+      <section class="card rule-doc" id="pl004">
+        <h2>PL004 · Resource will be replaced or destroyed</h2>
+        <p><span class="sev sev-low">LOW</span> <span class="muted">default severity · availability</span></p>
+        <p>Any other destroy or replace. Usually expected, listed so reviewers see every destructive action.</p>
+        <p><strong>Fix:</strong> Confirm each destroy/replace is intended.</p>
+      </section>
+      <section class="card rule-doc" id="pl005">
+        <h2>PL005 · Large number of resources destroyed</h2>
+        <p><span class="sev sev-high">HIGH</span> <span class="muted">default severity · availability</span></p>
+        <p>The plan destroys or replaces more resources than the configured threshold (default 10). This is often caused by a wrong workspace, a renamed module, or a provider/backend misconfiguration.</p>
+        <p><strong>Fix:</strong> Double-check the workspace/backend and module addresses. If this is a refactor, use <code>moved</code> blocks so Terraform updates addresses instead of recreating resources.</p>
+      </section>
+      <section class="card rule-doc" id="pl006">
+        <h2>PL006 · Refactor will destroy and recreate a resource</h2>
+        <p><span class="sev sev-high">HIGH</span> <span class="muted">default severity · refactor</span></p>
+        <p>A resource is destroyed at one address and an identical resource is created at another (rename, moved into a module, count→for_each), or removing an item from a <code>count</code> list shifts the indexes of everything after it. Terraform treats these as new resources.</p>
+        <p><strong>Fix:</strong> Add a <code>moved</code> block from the old address to the new one so Terraform only updates state. For <code>count</code> index shifts, switch to <code>for_each</code> with stable keys.</p>
+      </section>
+      <section class="card rule-doc" id="pl007">
+        <h2>PL007 · Infrastructure drifted from Terraform state</h2>
+        <p><span class="sev sev-medium">MEDIUM</span> <span class="muted">default severity · drift</span></p>
+        <p>Terraform detected changes made outside of Terraform (console, CLI, other automation) during refresh. Applying this plan may revert them.</p>
+        <p><strong>Fix:</strong> Find out who changed what (CloudTrail / activity logs). Either codify the change in Terraform or let this apply revert it — deliberately.</p>
+      </section>
+      <section class="card rule-doc" id="pl008">
+        <h2>PL008 · Resource will be imported</h2>
+        <p><span class="sev sev-info">INFO</span> <span class="muted">default severity · hygiene</span></p>
+        <p>An existing object is being imported into Terraform state via an <code>import</code> block.</p>
+        <p><strong>Fix:</strong> Make sure the configuration matches the real object so the import does not also trigger an update.</p>
+      </section>
+      <section class="card rule-doc" id="pl009">
+        <h2>PL009 · Resource address moved</h2>
+        <p><span class="sev sev-info">INFO</span> <span class="muted">default severity · refactor</span></p>
+        <p>A <code>moved</code> block changes a resource address without recreating it.</p>
+        <p><strong>Fix:</strong> No action needed — this is the safe way to refactor.</p>
+      </section>
+      <section class="card rule-doc" id="pl101">
+        <h2>PL101 · Deletion protection disabled</h2>
+        <p><span class="sev sev-high">HIGH</span> <span class="muted">default severity · data-loss</span></p>
+        <p>Deletion/termination protection is turned off on an existing resource — usually the first step before an accidental destroy.</p>
+        <p><strong>Fix:</strong> Keep deletion protection on in production. If you really need to destroy the resource, disable protection in a separate, reviewed change.</p>
+      </section>
+      <section class="card rule-doc" id="pl102">
+        <h2>PL102 · Final snapshot disabled on database</h2>
+        <p><span class="sev sev-medium">MEDIUM</span> <span class="muted">default severity · data-loss</span></p>
+        <p><code>skip_final_snapshot</code> is switched on, so destroying the database later will not leave a snapshot behind.</p>
+        <p><strong>Fix:</strong> Keep <code>skip_final_snapshot = false</code> and set <code>final_snapshot_identifier</code> for production databases.</p>
+      </section>
+      <section class="card rule-doc" id="pl103">
+        <h2>PL103 · Backups disabled or retention reduced</h2>
+        <p><span class="sev sev-high">HIGH</span> <span class="muted">default severity · data-loss</span></p>
+        <p>Automated backups are turned off or their retention is shortened.</p>
+        <p><strong>Fix:</strong> Keep automated backups enabled with a retention that meets your RPO/compliance requirements (commonly ≥ 7 days in production).</p>
+      </section>
+      <section class="card rule-doc" id="pl104">
+        <h2>PL104 · Encryption disabled</h2>
+        <p><span class="sev sev-high">HIGH</span> <span class="muted">default severity · security</span></p>
+        <p>Encryption at rest or in transit is off. For most storage services this cannot be enabled later without replacing the resource.</p>
+        <p><strong>Fix:</strong> Enable encryption (ideally with a customer-managed KMS key). Required by PCI DSS 3.5, ISO 27001 A.8.24 and most internal baselines.</p>
+      </section>
+      <section class="card rule-doc" id="pl105">
+        <h2>PL105 · S3 versioning suspended</h2>
+        <p><span class="sev sev-medium">MEDIUM</span> <span class="muted">default severity · data-loss</span></p>
+        <p>Object versioning protects against accidental overwrites and deletes (and is required for replication and Object Lock).</p>
+        <p><strong>Fix:</strong> Keep versioning enabled on buckets that hold important data; use lifecycle rules to expire old versions instead of suspending versioning.</p>
+      </section>
+      <section class="card rule-doc" id="pl106">
+        <h2>PL106 · Force-destroy / immediate deletion enabled</h2>
+        <p><span class="sev sev-medium">MEDIUM</span> <span class="muted">default severity · data-loss</span></p>
+        <p>Lets Terraform delete a non-empty bucket/repository/zone, or deletes a secret without a recovery window.</p>
+        <p><strong>Fix:</strong> Only enable force-destroy on ephemeral (dev/test) resources. Keep a recovery window on secrets.</p>
+      </section>
+      <section class="card rule-doc" id="pl107">
+        <h2>PL107 · Point-in-time recovery disabled</h2>
+        <p><span class="sev sev-medium">MEDIUM</span> <span class="muted">default severity · data-loss</span></p>
+        <p>DynamoDB point-in-time recovery is switched off.</p>
+        <p><strong>Fix:</strong> Keep PITR enabled on production tables.</p>
+      </section>
+      <section class="card rule-doc" id="pl108">
+        <h2>PL108 · KMS key rotation disabled</h2>
+        <p><span class="sev sev-low">LOW</span> <span class="muted">default severity · security</span></p>
+        <p>Automatic key rotation is switched off on a KMS key.</p>
+        <p><strong>Fix:</strong> Enable <code>enable_key_rotation</code> on customer-managed symmetric keys.</p>
+      </section>
+      <section class="card rule-doc" id="pl109">
+        <h2>PL109 · High availability reduced</h2>
+        <p><span class="sev sev-medium">MEDIUM</span> <span class="muted">default severity · availability</span></p>
+        <p>Multi-AZ / automatic failover / regional availability is turned off.</p>
+        <p><strong>Fix:</strong> Keep production databases and caches Multi-AZ.</p>
+      </section>
+      <section class="card rule-doc" id="pl110">
+        <h2>PL110 · Security monitoring or logging removed</h2>
+        <p><span class="sev sev-high">HIGH</span> <span class="muted">default severity · security</span></p>
+        <p>An audit/detection control (CloudTrail, GuardDuty, AWS Config, Security Hub, VPC Flow Logs, WAF association, diagnostic settings) is disabled or destroyed.</p>
+        <p><strong>Fix:</strong> Security controls should only be removed through an explicit, approved change. Required by ISO 27001 A.8.15/A.8.16, PCI DSS 10 and SOC 2 CC7.</p>
+      </section>
+      <section class="card rule-doc" id="pl111">
+        <h2>PL111 · Major engine or cluster version upgrade</h2>
+        <p><span class="sev sev-medium">MEDIUM</span> <span class="muted">default severity · availability</span></p>
+        <p>A database major version or Kubernetes control-plane version changes. These upgrades are one-way, can take minutes of downtime, and may break clients.</p>
+        <p><strong>Fix:</strong> Test the upgrade on a snapshot/staging first, check deprecated APIs/extensions/parameter groups, and schedule a maintenance window. Kubernetes can only move one minor version at a time.</p>
+      </section>
+      <section class="card rule-doc" id="pl112">
+        <h2>PL112 · Capacity scaled to zero</h2>
+        <p><span class="sev sev-medium">MEDIUM</span> <span class="muted">default severity · availability</span></p>
+        <p>An Auto Scaling group, node group or service is scaled down to zero.</p>
+        <p><strong>Fix:</strong> Make sure nothing is still serving traffic from this capacity.</p>
+      </section>
+      <section class="card rule-doc" id="pl201">
+        <h2>PL201 · Ingress opened to the internet</h2>
+        <p><span class="sev sev-critical">CRITICAL</span> <span class="muted">default severity · network</span></p>
+        <p>A firewall / security group rule newly allows inbound traffic from 0.0.0.0/0, ::/0 or <code>Internet</code>. Critical for admin, database and cache ports or all ports; low for 80/443.</p>
+        <p><strong>Fix:</strong> Restrict the source to known CIDRs, a VPN, or a load balancer security group. For admin access use SSM Session Manager / a bastion / IAP instead of opening SSH/RDP.</p>
+      </section>
+      <section class="card rule-doc" id="pl202">
+        <h2>PL202 · Database publicly accessible</h2>
+        <p><span class="sev sev-high">HIGH</span> <span class="muted">default severity · network</span></p>
+        <p>A managed database gets a public endpoint, or its firewall allows the whole internet.</p>
+        <p><strong>Fix:</strong> Keep databases in private subnets. Connect through a VPN, bastion, PrivateLink or application tier.</p>
+      </section>
+      <section class="card rule-doc" id="pl203">
+        <h2>PL203 · Load balancer becomes internet-facing</h2>
+        <p><span class="sev sev-medium">MEDIUM</span> <span class="muted">default severity · network</span></p>
+        <p>An internal load balancer is changed to internet-facing.</p>
+        <p><strong>Fix:</strong> Confirm the service is meant to be public and is protected (WAF, auth, TLS).</p>
+      </section>
+      <section class="card rule-doc" id="pl204">
+        <h2>PL204 · Kubernetes API endpoint open to the internet</h2>
+        <p><span class="sev sev-medium">MEDIUM</span> <span class="muted">default severity · network</span></p>
+        <p>The EKS public API endpoint is enabled for 0.0.0.0/0.</p>
+        <p><strong>Fix:</strong> Disable the public endpoint or restrict <code>public_access_cidrs</code> to office/VPN/CI egress ranges.</p>
+      </section>
+      <section class="card rule-doc" id="pl205">
+        <h2>PL205 · S3 Block Public Access weakened</h2>
+        <p><span class="sev sev-high">HIGH</span> <span class="muted">default severity · network</span></p>
+        <p>One or more S3 Block Public Access settings is turned off or the block is removed.</p>
+        <p><strong>Fix:</strong> Keep all four Block Public Access settings enabled. Serve public content through CloudFront with Origin Access Control instead.</p>
+      </section>
+      <section class="card rule-doc" id="pl206">
+        <h2>PL206 · Storage made public</h2>
+        <p><span class="sev sev-high">HIGH</span> <span class="muted">default severity · network</span></p>
+        <p>A bucket/container ACL grants access to everyone.</p>
+        <p><strong>Fix:</strong> Remove public ACLs. Use signed URLs or a CDN with origin access control for public content.</p>
+      </section>
+      <section class="card rule-doc" id="pl207">
+        <h2>PL207 · IMDSv1 allowed on EC2</h2>
+        <p><span class="sev sev-medium">MEDIUM</span> <span class="muted">default severity · security</span></p>
+        <p><code>http_tokens = &quot;optional&quot;</code> allows IMDSv1, which is exploitable via SSRF to steal instance role credentials.</p>
+        <p><strong>Fix:</strong> Set <code>metadata_options { http_tokens = &quot;required&quot; }</code>.</p>
+      </section>
+      <section class="card rule-doc" id="pl301">
+        <h2>PL301 · IAM policy grants full admin (*:*)</h2>
+        <p><span class="sev sev-critical">CRITICAL</span> <span class="muted">default severity · iam</span></p>
+        <p>A new policy statement allows every action on every resource (or uses NotAction with Allow).</p>
+        <p><strong>Fix:</strong> Grant only the actions and resources the workload needs. Use IAM Access Analyzer policy generation to derive least-privilege policies from CloudTrail.</p>
+      </section>
+      <section class="card rule-doc" id="pl302">
+        <h2>PL302 · IAM policy grants service-wide wildcard on all resources</h2>
+        <p><span class="sev sev-high">HIGH</span> <span class="muted">default severity · iam</span></p>
+        <p>A new statement allows <code>service:*</code> on <code>Resource: &quot;*&quot;</code> (e.g. <code>s3:*</code> on every bucket in the account).</p>
+        <p><strong>Fix:</strong> List the specific actions needed and scope <code>Resource</code> to specific ARNs.</p>
+      </section>
+      <section class="card rule-doc" id="pl303">
+        <h2>PL303 · IAM policy allows privilege escalation</h2>
+        <p><span class="sev sev-high">HIGH</span> <span class="muted">default severity · iam</span></p>
+        <p>A new statement grants actions that let the principal give itself more permissions (iam:PassRole, iam:CreatePolicyVersion, iam:Attach*Policy, iam:Put*Policy, iam:CreateAccessKey, iam:UpdateAssumeRolePolicy…) on all resources.</p>
+        <p><strong>Fix:</strong> Scope these actions to specific role/user ARNs, and constrain iam:PassRole with an <code>iam:PassedToService</code> condition.</p>
+      </section>
+      <section class="card rule-doc" id="pl304">
+        <h2>PL304 · Admin-level AWS managed policy attached</h2>
+        <p><span class="sev sev-critical">CRITICAL</span> <span class="muted">default severity · iam</span></p>
+        <p>AdministratorAccess, IAMFullAccess, PowerUserAccess or another *FullAccess managed policy is attached.</p>
+        <p><strong>Fix:</strong> Replace with a customer-managed least-privilege policy. Reserve AdministratorAccess for break-glass roles behind MFA.</p>
+      </section>
+      <section class="card rule-doc" id="pl305">
+        <h2>PL305 · Resource policy allows anyone (Principal &quot;*&quot;)</h2>
+        <p><span class="sev sev-critical">CRITICAL</span> <span class="muted">default severity · iam</span></p>
+        <p>A bucket/queue/topic/key/secret policy statement allows <code>Principal: &quot;*&quot;</code> without any Condition — the resource is public to every AWS account and often the internet.</p>
+        <p><strong>Fix:</strong> Name explicit principals, or add conditions such as <code>aws:PrincipalOrgID</code>, <code>aws:SourceVpce</code> or <code>aws:SourceArn</code>.</p>
+      </section>
+      <section class="card rule-doc" id="pl306">
+        <h2>PL306 · OIDC trust policy not restricted to a subject</h2>
+        <p><span class="sev sev-critical">CRITICAL</span> <span class="muted">default severity · iam</span></p>
+        <p>A role trusts a web-identity provider (GitHub Actions, EKS IRSA, GitLab, Terraform Cloud…) without restricting the token subject (<code>:sub</code>). For GitHub, that means any repository on github.com can assume the role.</p>
+        <p><strong>Fix:</strong> Add a <code>StringEquals</code>/<code>StringLike</code> condition on <code>&lt;provider&gt;:sub</code>, e.g. <code>token.actions.githubusercontent.com:sub = repo:my-org/my-repo:ref:refs/heads/main</code>, and on <code>:aud</code>.</p>
+      </section>
+      <section class="card rule-doc" id="pl307">
+        <h2>PL307 · Role trust policy allows any AWS principal</h2>
+        <p><span class="sev sev-critical">CRITICAL</span> <span class="muted">default severity · iam</span></p>
+        <p>An IAM role can be assumed by <code>Principal: {&quot;AWS&quot;: &quot;*&quot;}</code> — every AWS account in the world.</p>
+        <p><strong>Fix:</strong> Name the exact accounts/roles that may assume it, and require <code>sts:ExternalId</code> for third parties.</p>
+      </section>
+      <section class="card rule-doc" id="pl308">
+        <h2>PL308 · Long-lived IAM access key created</h2>
+        <p><span class="sev sev-medium">MEDIUM</span> <span class="muted">default severity · secrets</span></p>
+        <p>A static IAM access key is created. The secret ends up in Terraform state.</p>
+        <p><strong>Fix:</strong> Prefer IAM roles (IRSA, instance profiles, OIDC federation for CI). If a key is unavoidable, rotate it and keep state encrypted with restricted access.</p>
+      </section>
+      <section class="card rule-doc" id="pl309">
+        <h2>PL309 · Lambda callable by anyone</h2>
+        <p><span class="sev sev-high">HIGH</span> <span class="muted">default severity · iam</span></p>
+        <p>A Lambda permission allows principal <code>*</code> without <code>source_arn</code>/<code>source_account</code>/<code>principal_org_id</code>, or a function URL has no auth.</p>
+        <p><strong>Fix:</strong> Restrict the permission with <code>source_arn</code> (the calling service resource) or use <code>AWS_IAM</code> auth on function URLs.</p>
+      </section>
+      <section class="card rule-doc" id="pl310">
+        <h2>PL310 · Privileged Azure role assigned</h2>
+        <p><span class="sev sev-high">HIGH</span> <span class="muted">default severity · iam</span></p>
+        <p>Owner / Contributor / User Access Administrator is assigned at subscription or management-group scope (high) or resource-group scope (medium).</p>
+        <p><strong>Fix:</strong> Use built-in least-privilege roles or custom roles, assign at the narrowest scope, and use PIM for just-in-time elevation.</p>
+      </section>
+      <section class="card rule-doc" id="pl311">
+        <h2>PL311 · GCP IAM grants public or primitive role</h2>
+        <p><span class="sev sev-high">HIGH</span> <span class="muted">default severity · iam</span></p>
+        <p>A GCP IAM binding grants access to <code>allUsers</code>/<code>allAuthenticatedUsers</code> (critical) or a primitive/admin role such as roles/owner or roles/editor (high).</p>
+        <p><strong>Fix:</strong> Grant predefined least-privilege roles to specific groups/service accounts. Never bind allUsers to non-public data.</p>
+      </section>
+      <section class="card rule-doc" id="pl401">
+        <h2>PL401 · Plaintext secret in resource configuration</h2>
+        <p><span class="sev sev-high">HIGH</span> <span class="muted">default severity · secrets</span></p>
+        <p>A credential-looking value (API key, token, private key, password-named environment variable) is set as plain text. It ends up in the plan, the state file, CI logs and the provider's console.</p>
+        <p><strong>Fix:</strong> Reference secrets from Secrets Manager / SSM SecureString / Key Vault / Secret Manager at runtime (ECS <code>secrets</code>, Lambda extension, CSI driver) instead of literal values, and rotate any value that was already committed.</p>
+      </section>
+      <section class="card rule-doc" id="pl402">
+        <h2>PL402 · Output exposes a secret without `sensitive = true`</h2>
+        <p><span class="sev sev-high">HIGH</span> <span class="muted">default severity · secrets</span></p>
+        <p>An output whose name or value looks like a credential is not marked sensitive, so it is printed in CI logs and readable via <code>terraform output</code>.</p>
+        <p><strong>Fix:</strong> Add <code>sensitive = true</code> to the output, or stop exporting the secret and have consumers read it from a secret store.</p>
+      </section>
+      <section class="card rule-doc" id="pl501">
+        <h2>PL501 · Monthly cost increase above budget</h2>
+        <p><span class="sev sev-high">HIGH</span> <span class="muted">default severity · cost</span></p>
+        <p>The Infracost estimate for this plan raises the monthly bill by more than <code>cost.max_monthly_increase</code> (absolute) or <code>cost.max_monthly_increase_percent</code>. Only active when an Infracost file is provided and a threshold is configured.</p>
+        <p><strong>Fix:</strong> Check the largest cost deltas (instance sizes, NAT gateways, provisioned IOPS, data transfer). Right-size, use Savings Plans/Spot, or get the budget owner's approval and record it with an <code>ignore</code> entry.</p>
+      </section>
+    </div>
+  </main>
+  <footer class="footer"><div class="wrap footer-inner"><p>planlens · MIT licensed · built by <a href="https://yousafkhamza.github.io">Yousaf K Hamza</a></p><p><a href="./">Home</a> · <a href="https://github.com/yousafkhamza/planlens">GitHub</a></p></div></footer>
+</body>
+</html>

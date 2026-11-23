@@ -55,3 +55,6 @@ jobs:
           test "$code" = "200"
           curl -sf "${URL%/}/assets/planlens.js" -o /dev/null
           curl -sf "${URL%/}/samples/prod-change.json" -o /dev/null
+          curl -sf "${URL%/}/assets/og.png" -o /dev/null
+          curl -sf "${URL%/}/rules.html" -o /dev/null
+          curl -sf "${URL%/}/sitemap.xml" -o /dev/null

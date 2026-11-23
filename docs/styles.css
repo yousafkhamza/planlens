@@ -283,3 +283,8 @@ select, input[type="search"] { font-family: var(--sans); font-size: 0.9rem; }
 .cost-missing code { font-size: 0.76rem; }
 .linklike { background: none; border: 0; padding: 0; color: var(--accent); font: inherit; cursor: pointer; text-decoration: underline; }
 .error.info { color: var(--text); background: color-mix(in srgb, var(--accent) 10%, transparent); border-color: color-mix(in srgb, var(--accent) 40%, transparent); }
+.rule-doc { margin-top: 16px; scroll-margin-top: 80px; }
+.rule-doc h2 { font-size: 1.25rem; }
+a.rule { color: inherit; display: block; }
+a.rule:hover { border-color: var(--accent); text-decoration: none; }
+.lead code { font-size: 0.85em; }

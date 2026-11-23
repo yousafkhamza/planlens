@@ -64,7 +64,7 @@ jobs:
       - run: npm ci
       - run: npm run check
       - name: Committed bundles match the build
-        run: git diff --exit-code -- dist/action.cjs docs/assets/planlens.js docs/rules.md
+        run: git diff --exit-code -- dist/action.cjs docs/assets/planlens.js docs/rules.md docs/rules.html
 
       - name: Create tag (manual run)
         if: github.event_name == 'workflow_dispatch'

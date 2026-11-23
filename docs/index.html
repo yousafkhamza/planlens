@@ -3,15 +3,82 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>planlens — Terraform plan reviewer</title>
-  <meta name="description" content="See what terraform apply will really do before you run it. planlens catches destroyed databases, forced replacements, opened security groups and widened IAM in pull requests. Free, open source, 100% client-side web UI.">
-  <meta property="og:title" content="planlens — Terraform plan reviewer">
-  <meta property="og:description" content="Catch destroys, forced replacements, security regressions and IAM widening in Terraform plans — before apply.">
+  <title>planlens — Terraform Plan Reviewer for Pull Requests | Risk, Security &amp; Cost</title>
+  <meta name="description" content="Free, open-source Terraform plan reviewer. Catch destroyed databases, forced replacements, open ports, IAM widening and cost increases in pull requests.">
+  <link rel="canonical" href="https://yousafkhamza.github.io/planlens/">
+  <meta name="robots" content="index, follow, max-image-preview:large">
+  <meta name="author" content="Yousaf K Hamza">
+  <meta name="keywords" content="terraform plan review, terraform plan json, terraform pull request, terraform github action, devsecops, iac security, terraform destroy check, moved block, infracost, sarif">
+
+  <!-- Open Graph (LinkedIn, Facebook, Slack, Teams) -->
   <meta property="og:type" content="website">
+  <meta property="og:site_name" content="planlens">
+  <meta property="og:title" content="planlens — Know what terraform apply will really do">
+  <meta property="og:description" content="Open-source Terraform plan reviewer: destroys, forced replacements, open ports, IAM widening and cost — as one PR comment with a risk gate.">
   <meta property="og:url" content="https://yousafkhamza.github.io/planlens/">
+  <meta property="og:image" content="https://yousafkhamza.github.io/planlens/assets/og.png">
+  <meta property="og:image:secure_url" content="https://yousafkhamza.github.io/planlens/assets/og.png">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="planlens: a pull request comment showing risk 99/100, a replaced database, an open PostgreSQL port and a rename that recreates an S3 bucket.">
+  <meta property="og:locale" content="en_US">
+
+  <!-- X / Twitter -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="planlens — Know what terraform apply will really do">
+  <meta name="twitter:description" content="Open-source Terraform plan reviewer for pull requests: destroys, replacements, open ports, IAM widening and cost.">
+  <meta name="twitter:image" content="https://yousafkhamza.github.io/planlens/assets/og.png">
+  <meta name="twitter:image:alt" content="planlens pull request review with risk score and findings">
+
   <meta name="theme-color" content="#0b0f17">
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+  <link rel="icon" href="assets/icon-192.png" type="image/png" sizes="192x192">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <link rel="manifest" href="site.webmanifest">
+  <link rel="sitemap" type="application/xml" href="sitemap.xml">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "SoftwareApplication",
+        "name": "planlens",
+        "alternateName": "planlens Terraform plan reviewer",
+        "url": "https://yousafkhamza.github.io/planlens/",
+        "description": "Open-source Terraform plan reviewer that catches destroys, forced replacements, security regressions, IAM widening and cost increases in pull requests.",
+        "applicationCategory": "DeveloperApplication",
+        "applicationSubCategory": "Infrastructure as Code security",
+        "operatingSystem": "Linux, macOS, Windows, Web browser",
+        "softwareVersion": "1.1.0",
+        "license": "https://opensource.org/licenses/MIT",
+        "isAccessibleForFree": true,
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+        "image": "https://yousafkhamza.github.io/planlens/assets/og.png",
+        "screenshot": "https://yousafkhamza.github.io/planlens/assets/og.png",
+        "featureList": [
+          "Detects destroyed and replaced stateful resources and explains the attribute that forced replacement",
+          "Suggests moved blocks for renames and count index shifts",
+          "Flags internet-open ports, IAM wildcards, OIDC trust without subject, public buckets and plaintext secrets",
+          "Monthly cost delta and budget gate from Infracost",
+          "Sticky pull request comment, SARIF, JSON and a merge gate"
+        ],
+        "author": { "@type": "Person", "name": "Yousaf K Hamza", "url": "https://yousafkhamza.github.io" }
+      },
+      {
+        "@type": "SoftwareSourceCode",
+        "name": "planlens",
+        "codeRepository": "https://github.com/yousafkhamza/planlens",
+        "programmingLanguage": "TypeScript",
+        "runtimePlatform": "Node.js",
+        "license": "https://opensource.org/licenses/MIT",
+        "author": { "@type": "Person", "name": "Yousaf K Hamza", "url": "https://yousafkhamza.github.io" }
+      }
+    ]
+  }
+  </script>
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230b0f17'/%3E%3Ccircle cx='14' cy='14' r='7' fill='none' stroke='%2338bdf8' stroke-width='3'/%3E%3Cpath d='M19 19l7 7' stroke='%2338bdf8' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -197,7 +264,7 @@
       <div class="wrap">
         <div class="section-head">
           <h2 id="rules-title" class="section-title">Rule catalog</h2>
-          <p class="muted">Every rule can be disabled, re-rated or ignored per resource. <a href="https://github.com/yousafkhamza/planlens/blob/main/docs/rules.md">Full reference →</a></p>
+          <p class="muted">Every rule can be disabled, re-rated or ignored per resource. <a href="rules.html">Full reference →</a></p>
         </div>
         <div class="rule-filters">
           <input type="search" id="rule-search" placeholder="Search rules (e.g. iam, snapshot, PL306)" aria-label="Search rules">
@@ -319,7 +386,7 @@ rules:
   <footer class="footer">
     <div class="wrap footer-inner">
       <p>planlens <span id="ver"></span> · MIT licensed · built by <a href="https://yousafkhamza.github.io">Yousaf K Hamza</a></p>
-      <p><a href="https://github.com/yousafkhamza/planlens">GitHub</a> · <a href="https://github.com/yousafkhamza/planlens/blob/main/docs/rules.md">Rules</a> · <a href="https://github.com/yousafkhamza/planlens/blob/main/SECURITY.md">Security policy</a></p>
+      <p><a href="https://github.com/yousafkhamza/planlens">GitHub</a> · <a href="rules.html">Rules</a> · <a href="https://github.com/yousafkhamza/planlens/blob/main/SECURITY.md">Security policy</a></p>
     </div>
   </footer>
 

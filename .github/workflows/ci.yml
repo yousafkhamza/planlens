@@ -46,7 +46,7 @@ jobs:
       - name: Committed bundles are up to date
         if: matrix.os == 'ubuntu-latest' && matrix.node == 22
         run: |
-          git diff --exit-code -- dist/action.cjs docs/assets/planlens.js docs/rules.md || {
+          git diff --exit-code -- dist/action.cjs docs/assets/planlens.js docs/rules.md docs/rules.html || {
             echo "::error::Generated files are stale (dist/action.cjs, docs/assets/planlens.js, docs/rules.md). Run 'npm run build' and commit the result."
             exit 1
           }

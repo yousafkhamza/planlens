@@ -86,4 +86,76 @@ const lines = [
   ]),
 ];
 writeFileSync(`${root}/docs/rules.md`, `${lines.join("\n")}`);
+
+// docs/rules.html — indexable rule reference for search engines (same source as rules.md).
+const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+const inline = (s) => esc(s).replace(/`([^`]+)`/g, "<code>$1</code>");
+const BASE = "https://yousafkhamza.github.io/planlens/";
+const rulesHtml = `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>planlens rule reference — ${RULES.length} Terraform plan checks (security, data loss, IAM, cost)</title>
+  <meta name="description" content="Every planlens rule explained: destroyed or replaced stateful resources, count index shifts, 0.0.0.0/0 ingress, IAM wildcards and privilege escalation, OIDC trust without sub, public buckets, plaintext secrets and cost budgets — with fixes.">
+  <link rel="canonical" href="${BASE}rules.html">
+  <meta name="robots" content="index, follow, max-image-preview:large">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="planlens">
+  <meta property="og:title" content="planlens rule reference — ${RULES.length} Terraform plan checks">
+  <meta property="og:description" content="What each planlens rule catches in a Terraform plan, why it matters, and how to fix it.">
+  <meta property="og:url" content="${BASE}rules.html">
+  <meta property="og:image" content="${BASE}assets/og.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="${BASE}assets/og.png">
+  <meta name="theme-color" content="#0b0f17">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'none'">
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script type="application/ld+json">${JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    headline: `planlens rule reference — ${RULES.length} Terraform plan checks`,
+    url: `${BASE}rules.html`,
+    image: `${BASE}assets/og.png`,
+    author: { "@type": "Person", name: "Yousaf K Hamza", url: "https://yousafkhamza.github.io" },
+    about: ["Terraform", "Infrastructure as Code", "DevSecOps"],
+  })}</script>
+</head>
+<body>
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="./"><svg viewBox="0 0 32 32" width="28" height="28" aria-hidden="true"><rect width="32" height="32" rx="8" class="brand-bg"/><circle cx="14" cy="14" r="7" fill="none" stroke="currentColor" stroke-width="3"/><path d="M19 19l7 7" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg><span>planlens</span></a>
+      <nav aria-label="Main"><a href="./#try">Try it</a><a href="./#install">Install</a><a href="https://github.com/yousafkhamza/planlens">GitHub</a></nav>
+    </div>
+  </header>
+  <main class="section">
+    <div class="wrap">
+      <p class="eyebrow"><a href="./">planlens</a> / rules</p>
+      <h1>Rule reference</h1>
+      <p class="lead">${RULES.length} checks that run against <code>terraform show -json</code> output. Most report only what <strong>this plan introduces</strong>, so existing debt isn't re-reported on every PR. Change severities with <code>severity_overrides</code>, turn rules off with <code>disable</code>, or accept a finding with <code>ignore</code> in <code>.planlens.yml</code>.</p>
+      <div class="rule-grid">
+${RULES.map((r) => `        <a class="rule" href="#${r.id.toLowerCase()}"><header><span class="sev sev-${r.severity}">${r.severity.toUpperCase()}</span><span class="cat">${esc(r.category)}</span><span class="rid">${r.id}</span></header><h3>${esc(r.title)}</h3></a>`).join("\n")}
+      </div>
+${RULES.map(
+  (r) => `      <section class="card rule-doc" id="${r.id.toLowerCase()}">
+        <h2>${r.id} · ${esc(r.title)}</h2>
+        <p><span class="sev sev-${r.severity}">${r.severity.toUpperCase()}</span> <span class="muted">default severity · ${esc(r.category)}</span></p>
+        <p>${inline(r.description)}</p>
+        <p><strong>Fix:</strong> ${inline(r.remediation)}</p>
+      </section>`,
+).join("\n")}
+    </div>
+  </main>
+  <footer class="footer"><div class="wrap footer-inner"><p>planlens · MIT licensed · built by <a href="https://yousafkhamza.github.io">Yousaf K Hamza</a></p><p><a href="./">Home</a> · <a href="https://github.com/yousafkhamza/planlens">GitHub</a></p></div></footer>
+</body>
+</html>
+`;
+writeFileSync(`${root}/docs/rules.html`, rulesHtml);
 console.log("build complete");
