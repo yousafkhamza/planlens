@@ -1,22 +1,31 @@
 name: release
 
-# Push a tag like v1.2.3 → verify, publish to npm with provenance, create a
-# GitHub release, and move the floating major tag (v1) used by `uses: …@v1`.
+# Two ways to release:
+#   1. Actions tab → release → "Run workflow"  (tags v<package.json version> for you)
+#   2. git tag v1.2.3 && git push origin v1.2.3
+# Then: verify → publish to npm (if NPM_TOKEN is set) → GitHub release → move
+# the floating major tag (v1) that `uses: yousafkhamza/planlens@v1` resolves to.
 on:
   push:
     tags: ["v*.*.*"]
+  workflow_dispatch:
 
 permissions:
   contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
 
 jobs:
   release:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    environment: release
     permissions:
-      contents: write
-      id-token: write
+      contents: write # tags + GitHub release
+      id-token: write # npm provenance
+    env:
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -26,29 +35,80 @@ jobs:
           node-version: 22
           cache: npm
           registry-url: https://registry.npmjs.org
-      - name: Tag matches package.json version
+
+      - name: Resolve version and tag
+        id: v
         env:
-          TAG: ${{ github.ref_name }}
-        run: test "v$(node -p 'require("./package.json").version')" = "$TAG"
+          EVENT: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          VERSION="$(node -p 'require("./package.json").version')"
+          TAG="v$VERSION"
+          if [ "$EVENT" = "push" ] && [ "$REF_NAME" != "$TAG" ]; then
+            echo "::error::Tag $REF_NAME does not match package.json version $VERSION. Bump package.json + src/version.ts or fix the tag."
+            exit 1
+          fi
+          if [ "$EVENT" = "workflow_dispatch" ] && git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+            if [ "$(git rev-list -n1 "$TAG")" != "$(git rev-parse HEAD)" ]; then
+              echo "::error::$TAG already exists on a different commit. Bump the version in package.json and src/version.ts first."
+              exit 1
+            fi
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "major=${TAG%%.*}" >> "$GITHUB_OUTPUT"
+
       - run: npm ci
       - run: npm run check
       - name: Committed bundles match the build
         run: git diff --exit-code -- dist/action.cjs docs/assets/planlens.js docs/rules.md
+
+      - name: Create tag (manual run)
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          TAG: ${{ steps.v.outputs.tag }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if ! git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+            git tag -a "$TAG" -m "$TAG"
+            git push origin "refs/tags/$TAG"
+          fi
+
       - name: Publish to npm (with provenance)
-        run: npm publish --provenance --access public
+        if: env.NPM_TOKEN != ''
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          VERSION: ${{ steps.v.outputs.version }}
+        run: |
+          if npm view "planlens@$VERSION" version >/dev/null 2>&1; then
+            echo "planlens@$VERSION is already on npm — skipping publish."
+          else
+            npm publish --provenance --access public
+          fi
+      - name: npm publish skipped
+        if: env.NPM_TOKEN == ''
+        run: echo "::warning::NPM_TOKEN secret is not set — skipped npm publish. The GitHub release and Action tags are still created."
+
       - name: GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.ref_name }}
-        run: gh release create "$TAG" --verify-tag --generate-notes
-      - name: Move major tag
-        env:
-          TAG: ${{ github.ref_name }}
+          TAG: ${{ steps.v.outputs.tag }}
         run: |
-          MAJOR="${TAG%%.*}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists."
+          else
+            gh release create "$TAG" --verify-tag --generate-notes --title "planlens $TAG"
+          fi
+
+      - name: Move major tag (${{ steps.v.outputs.major }})
+        env:
+          TAG: ${{ steps.v.outputs.tag }}
+          MAJOR: ${{ steps.v.outputs.major }}
+        run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git tag -f "$MAJOR" "$TAG"
+          git tag -fa "$MAJOR" -m "$MAJOR → $TAG" "$TAG^{}"
           git push -f origin "refs/tags/$MAJOR"
+          echo "### Released $TAG" >> "$GITHUB_STEP_SUMMARY"
+          echo "Use it with \`uses: ${GITHUB_REPOSITORY}@$MAJOR\`" >> "$GITHUB_STEP_SUMMARY"
