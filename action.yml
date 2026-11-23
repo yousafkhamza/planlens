@@ -38,7 +38,7 @@ inputs:
     required: false
     default: "planlens:accept-risk"
   github-token:
-    description: Token used to post the PR comment. Needs `pull-requests: write`.
+    description: "Token used to post the PR comment. Needs `pull-requests: write`."
     required: false
     default: ${{ github.token }}
   step-summary:
