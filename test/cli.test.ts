@@ -148,3 +148,20 @@ describe("cli --infracost", () => {
     expect(r.err()).toMatch(re);
   });
 });
+
+describe("cli — user sample (single EC2)", () => {
+  it("passes without cost, shows cost with a matching estimate, explains a swapped file", async () => {
+    const a = io();
+    expect(await main(["user/single-ec2.json"], a.io)).toBe(EXIT.OK);
+    expect(a.out()).not.toContain("Cost");
+    const b = io();
+    expect(await main(["user/single-ec2.json", "--infracost", "infracost/single-ec2.json"], b.io)).toBe(EXIT.OK);
+    expect(b.out()).toContain("Cost $31.17/mo +$31.17/mo (Infracost)");
+    const c = io();
+    expect(await main(["infracost/single-ec2.json"], c.io)).toBe(EXIT.ERROR);
+    expect(c.err()).toMatch(/This is Infracost output, not a Terraform plan/);
+    const d = io();
+    await main(["user/single-ec2.json", "--infracost", "infracost/prod-change.json"], d.io);
+    expect(d.out()).toMatch(/does not mention any resource in this plan/);
+  });
+});

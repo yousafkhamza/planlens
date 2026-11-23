@@ -10,6 +10,8 @@ All notable changes to this project are documented here. The format follows [Kee
 - **Container image** `ghcr.io/yousafkhamza/planlens` (amd64/arm64, non-root, digest-pinned base, SBOM + provenance) for Jenkins, Azure DevOps, Bitbucket and Atlantis.
 - Examples for Atlantis, Azure DevOps, Jenkins and GitHub Actions + Infracost.
 - Web UI: cost panel, optional Infracost input, severity/text filter for large plans, rule count rendered from the engine.
+- Web UI: drop `plan.json` + `infracost.json` together (files are routed by content); Infracost pasted into the plan box is moved automatically; a hint explains how to add cost when none is loaded.
+- Warning when an Infracost estimate does not match the plan; a clear error when Infracost JSON is passed as the plan.
 
 ### Changed
 

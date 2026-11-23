@@ -99,3 +99,81 @@ describe("cost in reports and PL501", () => {
     expect(() => analyzePlan(plan(), { config: { cost: 5 } as never })).toThrow(/cost must be a mapping/);
   });
 });
+
+describe("cost — every way it can show up (or not)", () => {
+  const userPlan = () => fixture("user/single-ec2.json");
+  const est = (n: string) => readFileSync(`${FIXTURES}infracost/${n}.json`, "utf8");
+
+  it("plan only: no cost section, no warning (plans have no prices)", () => {
+    const r = analyzePlan(userPlan());
+    expect(r.cost).toBeUndefined();
+    expect(r.warnings).toEqual([]);
+    expect(renderMarkdown([r])).not.toContain("💰");
+    expect(renderText([r])).not.toContain("Cost");
+  });
+
+  it("new resources: past cost 0 → shows total and delta without a % (no baseline)", () => {
+    const r = analyzePlan(userPlan(), { cost: est("single-ec2") });
+    expect(r.cost).toMatchObject({ pastMonthly: 0, monthly: 31.17, diffMonthly: 31.17 });
+    expect(r.cost?.resources).toEqual([{ address: "aws_instance.web", diffMonthly: 31.17 }]); // null (usage-based) skipped
+    expect(r.warnings).toEqual([]);
+    expect(renderMarkdown([r])).toContain("💰 **Cost:** $0.00 → $31.17 /mo (**+$31.17/mo**)");
+    // percentage threshold cannot fire without a baseline, absolute one can
+    expect(ids(analyzePlan(userPlan(), { cost: est("single-ec2"), config: { cost: { max_monthly_increase_percent: 1 } } }))).not.toContain("PL501");
+    expect(ids(analyzePlan(userPlan(), { cost: est("single-ec2"), config: { cost: { max_monthly_increase: 25 } } }))).toContain("PL501");
+  });
+
+  it("estimate from a different plan: warns instead of silently showing wrong numbers", () => {
+    const r = analyzePlan(userPlan(), { cost: est("prod-change") });
+    expect(r.warnings.join(" ")).toMatch(/does not mention any resource in this plan/);
+  });
+
+  it("multi-project estimates match on the address after the project prefix", () => {
+    const multi = {
+      projects: [
+        { name: "envs/dev", diff: { resources: [{ name: "aws_instance.web", monthlyCost: "10" }], totalMonthlyCost: "10" } },
+        { name: "envs/prd", diff: { resources: [{ name: "aws_nat_gateway.x", monthlyCost: "32.85" }], totalMonthlyCost: "32.85" } },
+      ],
+    };
+    const r = analyzePlan(userPlan(), { cost: multi });
+    expect(r.cost?.diffMonthly).toBe(42.85);
+    expect(r.warnings).toEqual([]);
+  });
+
+  it("`infracost diff` style output (diff totals only) still shows the delta", () => {
+    const r = analyzePlan(userPlan(), {
+      cost: { projects: [{ diff: { resources: [{ name: "aws_instance.web", monthlyCost: "31.17" }], totalMonthlyCost: "31.17" } }] },
+    });
+    expect(r.cost).toMatchObject({ monthly: undefined, diffMonthly: 31.17 });
+    expect(renderMarkdown([r])).toContain("💰 **Cost:** (**+$31.17/mo**)");
+  });
+
+  it("free / usage-only resources: $0 change renders, nothing fires", () => {
+    const r = analyzePlan(userPlan(), {
+      cost: {
+        projects: [
+          {
+            breakdown: { totalMonthlyCost: "0" },
+            pastBreakdown: { totalMonthlyCost: "0" },
+            diff: { resources: [{ name: "aws_instance.web", monthlyCost: null }], totalMonthlyCost: "0" },
+          },
+        ],
+      },
+      config: { cost: { max_monthly_increase: 0 } },
+    });
+    expect(r.cost).toMatchObject({ monthly: 0, diffMonthly: 0, resources: [] });
+    expect(ids(r)).not.toContain("PL501");
+    expect(renderMarkdown([r])).toContain("$0.00 → $0.00 /mo (**+$0.00/mo**)");
+  });
+
+  it("Infracost JSON given as the plan gets a pointed error; kinds are detected", async () => {
+    const { parsePlanText, detectJsonKind } = await import("../../src/core/plan.js");
+    expect(() => parsePlanText(est("single-ec2"))).toThrow(/This is Infracost output, not a Terraform plan/);
+    expect(detectJsonKind(est("single-ec2"))).toBe("infracost");
+    expect(detectJsonKind(JSON.stringify(userPlan()))).toBe("plan");
+    expect(detectJsonKind(JSON.stringify({ format_version: "1.0", values: {} }))).toBe("state");
+    expect(detectJsonKind("{nope")).toBe("unknown");
+    expect(detectJsonKind("[]")).toBe("unknown");
+    expect(detectJsonKind(JSON.stringify({ format_version: "1.0" }))).toBe("unknown");
+  });
+});

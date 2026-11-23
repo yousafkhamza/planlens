@@ -101,10 +101,52 @@ describe.runIf(existsSync(bundle))("web UI (docs/index.html + app.js)", () => {
     $<HTMLButtonElement>('[data-sample="lifecycle.json"]').click();
     await tick();
     expect($<HTMLTextAreaElement>("#infracost").value).toBe("");
-    expect(w.document.querySelector(".cost")).toBeNull();
+    expect(w.document.querySelector(".cost:not(.cost-missing)")).toBeNull();
+    expect(w.document.querySelector(".cost-missing")).not.toBeNull();
     $<HTMLTextAreaElement>("#infracost").value = "{}";
     $<HTMLButtonElement>("#run").click();
     expect($("#error").textContent).toMatch(/Infracost/);
+  });
+
+  it("user sample: explains missing cost, and routes plan + Infracost files by content", async () => {
+    const { $, w, tick } = boot();
+    const plan = readFileSync(`${docs}../test/fixtures/user/single-ec2.json`, "utf8");
+    const est = readFileSync(`${docs}../test/fixtures/infracost/single-ec2.json`, "utf8");
+    // 1. plan only → hint with a working button
+    $<HTMLTextAreaElement>("#paste").value = plan;
+    $<HTMLButtonElement>("#run").click();
+    expect($(".cost-missing").textContent).toContain("No cost estimate");
+    ($(".cost-missing .linklike") as HTMLButtonElement).click();
+    expect(($("details.config") as HTMLDetailsElement).open).toBe(true);
+    // 2. Infracost pasted into the plan box → moved, info message (not an error)
+    $<HTMLTextAreaElement>("#paste").value = est;
+    $<HTMLButtonElement>("#run").click();
+    expect($<HTMLTextAreaElement>("#infracost").value).toBe(est.trim());
+    expect($<HTMLTextAreaElement>("#paste").value).toBe("");
+    expect($("#error").classList.contains("info")).toBe(true);
+    // 3. drop both files at once (any order) → cost panel
+    $<HTMLTextAreaElement>("#infracost").value = "";
+    const drop = (files: File[]) => {
+      const ev = new w.Event("drop", { bubbles: true, cancelable: true });
+      Object.defineProperty(ev, "dataTransfer", { value: { files } });
+      $("#drop").dispatchEvent(ev);
+    };
+    drop([new w.File([est], "infracost.json"), new w.File([plan], "plan.json")]);
+    await tick();
+    await tick();
+    expect($(".cost:not(.cost-missing)").textContent).toContain("$0.00 → $31.17");
+    expect($("#result").textContent).toContain("plan.json");
+    expect(w.document.querySelector(".cost-missing")).toBeNull();
+    // 4. state file / only an estimate
+    drop([new w.File([JSON.stringify({ format_version: "1.0", values: {} })], "terraform.tfstate.json")]);
+    await tick();
+    await tick();
+    expect($("#error").textContent).toMatch(/is Terraform state/);
+    $<HTMLButtonElement>("#clear").click();
+    drop([new w.File([est], "infracost.json")]);
+    await tick();
+    await tick();
+    expect($("#error").textContent).toMatch(/Infracost estimate loaded/);
   });
 
   it("shows a clean state for a no-op plan", async () => {

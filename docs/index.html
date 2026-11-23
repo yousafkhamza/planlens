@@ -118,9 +118,9 @@
             </div>
 
             <label class="drop" id="drop" for="file">
-              <input type="file" id="file" accept=".json,application/json" hidden>
+              <input type="file" id="file" accept=".json,application/json" multiple hidden>
               <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true"><path fill="currentColor" d="M19 15v4H5v-4H3v4a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-4h-2zm-7-12-5 5h3v6h4V8h3l-5-5z"/></svg>
-              <span><strong>Drop plan.json</strong> or click to choose</span>
+              <span><strong>Drop plan.json</strong> (+ optional infracost.json) or click to choose</span>
               <span class="muted small"><code>terraform plan -out=tf.plan &amp;&amp; terraform show -json tf.plan &gt; plan.json</code></span>
             </label>
 

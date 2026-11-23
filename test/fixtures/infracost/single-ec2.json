@@ -1,0 +1,27 @@
+{
+  "version": "0.2",
+  "currency": "USD",
+  "projects": [
+    {
+      "name": "single-ec2",
+      "pastBreakdown": { "resources": [], "totalMonthlyCost": "0" },
+      "breakdown": {
+        "resources": [
+          { "name": "aws_instance.web", "monthlyCost": "31.17", "costComponents": [{ "name": "Instance usage (Linux/UNIX, on-demand, t3.medium)", "monthlyCost": "30.37" }, { "name": "Root block device storage", "monthlyCost": "0.8" }] },
+          { "name": "aws_s3_bucket.logs", "monthlyCost": null }
+        ],
+        "totalMonthlyCost": "31.17"
+      },
+      "diff": {
+        "resources": [
+          { "name": "aws_instance.web", "monthlyCost": "31.17" },
+          { "name": "aws_s3_bucket.logs", "monthlyCost": null }
+        ],
+        "totalMonthlyCost": "31.17"
+      }
+    }
+  ],
+  "totalMonthlyCost": "31.17",
+  "pastTotalMonthlyCost": "0",
+  "diffTotalMonthlyCost": "31.17"
+}

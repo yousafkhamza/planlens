@@ -39554,6 +39554,11 @@ function parsePlanText(text) {
 }
 function assertPlan(data) {
   if (!isRecord(data)) throw new PlanParseError("Plan JSON must be an object.");
+  if (isInfracostJson(data)) {
+    throw new PlanParseError(
+      "This is Infracost output, not a Terraform plan. Load it as the cost estimate instead (CLI: --infracost infracost.json \xB7 web: the Infracost box), and give planlens the plan from: terraform show -json tf.plan > plan.json"
+    );
+  }
   if (!("format_version" in data)) {
     throw new PlanParseError(
       "This does not look like a Terraform plan: missing `format_version`. Generate it with: terraform plan -out=tf.plan && terraform show -json tf.plan > plan.json"
@@ -39703,6 +39708,9 @@ function summarize(plan) {
 }
 function managedChanges(plan) {
   return plan.changes.filter((c) => c.mode === "managed" && c.kind !== "no-op" && c.kind !== "read");
+}
+function isInfracostJson(data) {
+  return isRecord(data) && Array.isArray(data.projects) && !("format_version" in data);
 }
 
 // src/core/catalog.ts
@@ -42167,6 +42175,15 @@ function analyzeNormalized(plan, config, name, cost) {
   if (plan.errored) warnings.push("Terraform reported errors while planning \u2014 this plan is partial and the review may miss changes.");
   if (!plan.complete) warnings.push("The plan is incomplete (deferred actions); another plan/apply round will be needed.");
   if (!plan.applyable && !plan.errored && managedChanges(plan).length > 0) warnings.push("Terraform marked this plan as not applyable.");
+  if (cost && cost.resources.length > 0) {
+    const addrs = new Set(plan.changes.flatMap((c) => [c.address, c.baseAddress]));
+    const strip2 = (a) => a.replace(/^[^:]+: (?=\S+\.)/, "");
+    if (!cost.resources.some((r) => addrs.has(strip2(r.address)))) {
+      warnings.push(
+        "The Infracost estimate does not mention any resource in this plan \u2014 it was probably generated from a different plan. Re-run `infracost breakdown --path plan.json` on this plan."
+      );
+    }
+  }
   let findings = [];
   for (const rule of RULES) {
     if (config.disable.has(rule.id)) continue;

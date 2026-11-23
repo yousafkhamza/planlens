@@ -70,6 +70,15 @@ export function analyzeNormalized(plan: NormalizedPlan, config: ResolvedConfig, 
   if (!plan.complete) warnings.push("The plan is incomplete (deferred actions); another plan/apply round will be needed.");
   // Terraform sets applyable=false on no-op plans too; only worth a warning when there are changes.
   if (!plan.applyable && !plan.errored && managedChanges(plan).length > 0) warnings.push("Terraform marked this plan as not applyable.");
+  if (cost && cost.resources.length > 0) {
+    const addrs = new Set(plan.changes.flatMap((c) => [c.address, c.baseAddress]));
+    const strip = (a: string) => a.replace(/^[^:]+: (?=\S+\.)/, "");
+    if (!cost.resources.some((r) => addrs.has(strip(r.address)))) {
+      warnings.push(
+        "The Infracost estimate does not mention any resource in this plan — it was probably generated from a different plan. Re-run `infracost breakdown --path plan.json` on this plan.",
+      );
+    }
+  }
 
   let findings: Finding[] = [];
   for (const rule of RULES) {

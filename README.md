@@ -179,7 +179,7 @@ Attribute operators: `exists`, `absent`, `equals`, `not_equals`, `matches`, `not
 
 ## Cost (Infracost)
 
-Put the monthly cost delta next to the risk review and gate on a budget:
+Terraform plans contain no prices, so planlens never guesses them. Give it an Infracost estimate of the same plan to put the monthly cost delta next to the risk review and gate on a budget:
 
 ```bash
 infracost breakdown --path plan.json --format json --out-file infracost.json
@@ -193,7 +193,7 @@ cost:
   max_monthly_increase_percent: 20   # …or by more than 20%
 ```
 
-The PR comment shows `💰 Cost: $2,140.50 → $2,552.80 /mo (+$412.30/mo (+19%))` plus the largest per-resource deltas. In the Action, use the `infracost` input ([example](examples/github-actions/with-infracost.yml)).
+The PR comment shows `💰 Cost: $2,140.50 → $2,552.80 /mo (+$412.30/mo (+19%))` plus the largest per-resource deltas. In the Action, use the `infracost` input ([example](examples/github-actions/with-infracost.yml)). In the web UI, drop `plan.json` and `infracost.json` together; each file is routed by its content. If the estimate doesn't mention any resource in the plan, planlens warns that it was probably generated from a different plan.
 
 ## Optional AI summary
 

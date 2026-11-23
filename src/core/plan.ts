@@ -21,6 +21,12 @@ export function parsePlanText(text: string): RawPlan {
 
 export function assertPlan(data: unknown): RawPlan {
   if (!isRecord(data)) throw new PlanParseError("Plan JSON must be an object.");
+  if (isInfracostJson(data)) {
+    throw new PlanParseError(
+      "This is Infracost output, not a Terraform plan. Load it as the cost estimate instead (CLI: --infracost infracost.json · web: the Infracost box), " +
+        "and give planlens the plan from: terraform show -json tf.plan > plan.json",
+    );
+  }
   if (!("format_version" in data)) {
     throw new PlanParseError(
       "This does not look like a Terraform plan: missing `format_version`. " +
@@ -183,4 +189,24 @@ export function summarize(plan: NormalizedPlan): ChangeSummary {
 /** Managed resources that actually change (excludes no-op and data reads). */
 export function managedChanges(plan: NormalizedPlan): ResourceChange[] {
   return plan.changes.filter((c) => c.mode === "managed" && c.kind !== "no-op" && c.kind !== "read");
+}
+
+/** Infracost JSON has `projects` and no Terraform `format_version`. */
+export function isInfracostJson(data: unknown): boolean {
+  return isRecord(data) && Array.isArray(data.projects) && !("format_version" in data);
+}
+
+/** Classify a JSON document so UIs can route dropped/pasted files to the right input. */
+export function detectJsonKind(text: string): "plan" | "infracost" | "state" | "unknown" {
+  let data: unknown;
+  try {
+    data = JSON.parse(text.replace(/^﻿/, ""));
+  } catch {
+    return "unknown";
+  }
+  if (isInfracostJson(data)) return "infracost";
+  if (!isRecord(data) || !("format_version" in data)) return "unknown";
+  if ("resource_changes" in data || "planned_values" in data || "output_changes" in data) return "plan";
+  if ("values" in data) return "state";
+  return "unknown";
 }

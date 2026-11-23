@@ -6,7 +6,7 @@ import { parse as parseYaml } from "yaml";
 import { ConfigError, validateConfig } from "./core/config.js";
 import { describeCostDelta, formatMoney, parseInfracost } from "./core/cost.js";
 import { analyzePlan } from "./core/engine.js";
-import { PlanParseError, parsePlanText } from "./core/plan.js";
+import { detectJsonKind, PlanParseError, parsePlanText } from "./core/plan.js";
 import { RULES } from "./core/rules/index.js";
 import { renderMarkdown } from "./report/markdown.js";
 import { renderSarif } from "./report/sarif.js";
@@ -20,6 +20,7 @@ function parseConfigText(text: string) {
 const api = {
   analyzePlan,
   parsePlanText,
+  detectJsonKind,
   parseConfigText,
   parseInfracost,
   formatMoney,

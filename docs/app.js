@@ -86,8 +86,9 @@
   const result = $("#result");
   let currentName = "plan.json";
 
-  function showError(msg) {
+  function showError(msg, kind) {
     errorBox.textContent = msg;
+    errorBox.classList.toggle("info", kind === "info");
     errorBox.hidden = false;
   }
 
@@ -167,6 +168,23 @@
           delta ? el("span", { class: cost.diffMonthly > 0 ? "up" : "down", text: delta }) : null,
           el("span", { class: "muted small", text: "Infracost estimate" }),
           top.length ? el("ul", {}, top.map((r) => el("li", {}, el("code", { text: r.address }), ` ${PL.formatMoney(r.diffMonthly, cost.currency, true)}/mo`))) : null,
+        ),
+      );
+    }
+
+    if (!cost && s.total > 0) {
+      const add = el("button", { class: "linklike", type: "button", text: "Add an Infracost estimate" });
+      add.addEventListener("click", () => {
+        openOptions();
+        $("#infracost").focus();
+      });
+      result.append(
+        el(
+          "div",
+          { class: "cost cost-missing" },
+          el("span", { text: "💰 No cost estimate" }),
+          el("span", { class: "muted small" }, "Plans don't contain prices, and planlens doesn't guess them. ", add, " to see the monthly delta: "),
+          el("code", { text: "infracost breakdown --path plan.json --format json" }),
         ),
       );
     }
@@ -273,6 +291,13 @@
     errorBox.hidden = true;
     const text = paste.value.trim();
     if (!text) return showError("Paste a plan, drop a file, or pick a sample first.");
+    // Infracost JSON pasted into the plan box → move it where it belongs.
+    if (PL.detectJsonKind(text) === "infracost") {
+      $("#infracost").value = text;
+      paste.value = "";
+      openOptions();
+      return showError("That was Infracost output, so it was moved to the Infracost box (under Options). Now paste or drop the Terraform plan it was generated from.", "info");
+    }
     let config = {};
     try {
       config = PL.parseConfigText($("#config").value);
@@ -323,13 +348,54 @@
     }
   }
 
-  function readFile(file) {
-    if (!file) return;
-    if (file.size > MAX_BYTES) return showError("That file is larger than 200 MB — use the CLI for very large plans.");
-    const reader = new FileReader();
-    reader.onload = () => loadText(String(reader.result), file.name);
-    reader.onerror = () => showError("Could not read the file.");
-    reader.readAsText(file);
+  function readText(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = () => reject(new Error(`Could not read ${file.name}.`));
+      reader.readAsText(file);
+    });
+  }
+
+  /** Accept one or more files; route each by content (plan vs Infracost), then review. */
+  async function readFiles(fileList) {
+    const files = [...(fileList || [])];
+    if (!files.length) return;
+    errorBox.hidden = true;
+    let planText;
+    let planName;
+    const problems = [];
+    for (const file of files) {
+      if (file.size > MAX_BYTES) {
+        problems.push(`${file.name} is larger than 200 MB — use the CLI for very large plans.`);
+        continue;
+      }
+      let text;
+      try {
+        text = await readText(file);
+      } catch (e) {
+        problems.push(e.message);
+        continue;
+      }
+      const kind = PL.detectJsonKind(text);
+      if (kind === "infracost") {
+        $("#infracost").value = text;
+        openOptions();
+      } else if (kind === "state") problems.push(`${file.name} is Terraform state, not a plan. Use: terraform show -json tf.plan > plan.json`);
+      else if (planText === undefined) {
+        planText = text;
+        planName = file.name;
+      } else problems.push(`Only one plan is reviewed at a time here — ignored ${file.name}. Use the CLI for several plans.`);
+    }
+    if (planText !== undefined) loadText(planText, planName);
+    else if (paste.value.trim()) run();
+    else if (!problems.length) showError("Infracost estimate loaded. Now drop or paste the Terraform plan (plan.json) it was generated from.", "info");
+    if (problems.length) showError(problems.join("\n"));
+  }
+
+  function openOptions() {
+    const d = $("details.config");
+    if (d) d.open = true;
   }
 
   document.querySelectorAll("[data-sample]").forEach((b) => b.addEventListener("click", () => loadSample(b.dataset.sample, b)));
@@ -347,7 +413,7 @@
   });
   paste.addEventListener("input", () => (currentName = "pasted plan"));
   $("#failon").addEventListener("change", () => paste.value.trim() && run());
-  $("#file").addEventListener("change", (e) => readFile(e.target.files[0]));
+  $("#file").addEventListener("change", (e) => readFiles(e.target.files));
 
   const drop = $("#drop");
   ["dragenter", "dragover"].forEach((t) =>
@@ -359,7 +425,7 @@
   ["dragleave", "drop"].forEach((t) => drop.addEventListener(t, () => drop.classList.remove("over")));
   drop.addEventListener("drop", (e) => {
     e.preventDefault();
-    readFile(e.dataTransfer.files[0]);
+    readFiles(e.dataTransfer.files);
   });
   // Allow dropping anywhere on the analyzer without the browser opening the file.
   window.addEventListener("dragover", (e) => e.preventDefault());
