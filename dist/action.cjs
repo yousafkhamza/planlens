@@ -6215,12 +6215,12 @@ var require_sha256 = __commonJS({
       }
       exports3.hmac = hmac;
       function fillBuffer(buffer, hmac2, info, counter) {
-        var num = counter[0];
-        if (num === 0) {
+        var num2 = counter[0];
+        if (num2 === 0) {
           throw new Error("hkdf: cannot expand more");
         }
         hmac2.reset();
-        if (num > 1) {
+        if (num2 > 1) {
           hmac2.update(buffer);
         }
         if (info) {
@@ -34090,9 +34090,9 @@ var require_stringifyNumber = __commonJS({
     function stringifyNumber({ format, minFractionDigits, tag, value }) {
       if (typeof value === "bigint")
         return String(value);
-      const num = typeof value === "number" ? value : Number(value);
-      if (!isFinite(num))
-        return isNaN(num) ? ".nan" : num < 0 ? "-.inf" : ".inf";
+      const num2 = typeof value === "number" ? value : Number(value);
+      if (!isFinite(num2))
+        return isNaN(num2) ? ".nan" : num2 < 0 ? "-.inf" : ".inf";
       let n = Object.is(value, -0) ? "-0" : JSON.stringify(value);
       if (!format && minFractionDigits && (!tag || tag === "tag:yaml.org,2002:float") && /^-?\d/.test(n) && !n.includes("e")) {
         let i = n.indexOf(".");
@@ -34132,8 +34132,8 @@ var require_float = __commonJS({
       test: /^[-+]?(?:\.[0-9]+|[0-9]+(?:\.[0-9]*)?)[eE][-+]?[0-9]+$/,
       resolve: (str) => parseFloat(str),
       stringify(node) {
-        const num = Number(node.value);
-        return isFinite(num) ? num.toExponential() : stringifyNumber.stringifyNumber(node);
+        const num2 = Number(node.value);
+        return isFinite(num2) ? num2.toExponential() : stringifyNumber.stringifyNumber(node);
       }
     };
     var float = {
@@ -34572,8 +34572,8 @@ var require_float2 = __commonJS({
       test: /^[-+]?(?:[0-9][0-9_]*)?(?:\.[0-9_]*)?[eE][-+]?[0-9]+$/,
       resolve: (str) => parseFloat(str.replace(/_/g, "")),
       stringify(node) {
-        const num = Number(node.value);
-        return isFinite(num) ? num.toExponential() : stringifyNumber.stringifyNumber(node);
+        const num2 = Number(node.value);
+        return isFinite(num2) ? num2.toExponential() : stringifyNumber.stringifyNumber(node);
       }
     };
     var float = {
@@ -34775,23 +34775,23 @@ var require_timestamp = __commonJS({
     function parseSexagesimal(str, asBigInt) {
       const sign = str[0];
       const parts = sign === "-" || sign === "+" ? str.substring(1) : str;
-      const num = (n) => asBigInt ? BigInt(n) : Number(n);
-      const res = parts.replace(/_/g, "").split(":").reduce((res2, p) => res2 * num(60) + num(p), num(0));
-      return sign === "-" ? num(-1) * res : res;
+      const num2 = (n) => asBigInt ? BigInt(n) : Number(n);
+      const res = parts.replace(/_/g, "").split(":").reduce((res2, p) => res2 * num2(60) + num2(p), num2(0));
+      return sign === "-" ? num2(-1) * res : res;
     }
     function stringifySexagesimal(node) {
       let { value } = node;
-      let num = (n) => n;
+      let num2 = (n) => n;
       if (typeof value === "bigint")
-        num = (n) => BigInt(n);
+        num2 = (n) => BigInt(n);
       else if (isNaN(value) || !isFinite(value))
         return stringifyNumber.stringifyNumber(node);
       let sign = "";
       if (value < 0) {
         sign = "-";
-        value *= num(-1);
+        value *= num2(-1);
       }
-      const _60 = num(60);
+      const _60 = num2(60);
       const parts = [value % _60];
       if (value < 60) {
         parts.unshift(0);
@@ -39076,7 +39076,7 @@ var require_dist2 = __commonJS({
 });
 
 // src/action/main.ts
-var import_node_fs4 = require("node:fs");
+var import_node_fs5 = require("node:fs");
 var import_node_path5 = require("node:path");
 
 // src/ai/providers.ts
@@ -39286,6 +39286,7 @@ function expandPatterns(input2, cwd = process.cwd()) {
 }
 
 // src/node/run.ts
+var import_node_fs4 = require("node:fs");
 var import_node_path4 = require("node:path");
 
 // src/core/util.ts
@@ -39434,6 +39435,106 @@ function asArray(v2) {
 function plural(n, word, pluralWord = `${word}s`) {
   return `${n} ${n === 1 ? word : pluralWord}`;
 }
+
+// src/core/cost.ts
+var CostParseError = class extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "CostParseError";
+  }
+};
+function num(v2) {
+  if (v2 === null || v2 === void 0 || v2 === "") return void 0;
+  const n = typeof v2 === "number" ? v2 : Number(v2);
+  return Number.isFinite(n) ? n : void 0;
+}
+function parseInfracost(data) {
+  let obj = data;
+  if (typeof data === "string") {
+    try {
+      obj = JSON.parse(data);
+    } catch (e) {
+      throw new CostParseError(`Infracost file is not valid JSON: ${e.message}`);
+    }
+  }
+  if (!isRecord(obj) || !Array.isArray(obj.projects)) {
+    throw new CostParseError(
+      "This does not look like Infracost JSON (missing `projects`). Generate it with: infracost breakdown --path plan.json --format json --out-file infracost.json"
+    );
+  }
+  const projects = obj.projects.filter(isRecord);
+  const sumProjects = (pick) => {
+    const vals = projects.map((p) => num(pick(p))).filter((x) => x !== void 0);
+    return vals.length ? vals.reduce((a, b) => a + b, 0) : void 0;
+  };
+  const monthly = num(obj.totalMonthlyCost) ?? sumProjects((p) => isRecord(p.breakdown) ? p.breakdown.totalMonthlyCost : void 0);
+  const pastMonthly = num(obj.pastTotalMonthlyCost) ?? sumProjects((p) => isRecord(p.pastBreakdown) ? p.pastBreakdown.totalMonthlyCost : void 0);
+  let diffMonthly = num(obj.diffTotalMonthlyCost) ?? sumProjects((p) => isRecord(p.diff) ? p.diff.totalMonthlyCost : void 0);
+  if (diffMonthly === void 0 && monthly !== void 0 && pastMonthly !== void 0) diffMonthly = monthly - pastMonthly;
+  const deltas = /* @__PURE__ */ new Map();
+  for (const p of projects) {
+    const prefix = projects.length > 1 && typeof p.name === "string" ? `${p.name}: ` : "";
+    for (const r of asArray(isRecord(p.diff) ? p.diff.resources : void 0)) {
+      if (!isRecord(r) || typeof r.name !== "string") continue;
+      const d = num(r.monthlyCost);
+      if (d === void 0 || Math.abs(d) < 5e-3) continue;
+      deltas.set(`${prefix}${r.name}`, (deltas.get(`${prefix}${r.name}`) ?? 0) + d);
+    }
+  }
+  const resources = [...deltas.entries()].map(([address, diff]) => ({ address, diffMonthly: Math.round(diff * 100) / 100 })).sort((a, b) => Math.abs(b.diffMonthly) - Math.abs(a.diffMonthly)).slice(0, 20);
+  const round = (n) => n === void 0 ? void 0 : Math.round(n * 100) / 100;
+  return {
+    currency: typeof obj.currency === "string" && obj.currency ? obj.currency : "USD",
+    pastMonthly: round(pastMonthly),
+    monthly: round(monthly),
+    diffMonthly: round(diffMonthly),
+    resources
+  };
+}
+function formatMoney(n, currency, signed = false) {
+  let s;
+  try {
+    s = new Intl.NumberFormat("en-US", { style: "currency", currency, minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Math.abs(n));
+  } catch {
+    s = `${Math.abs(n).toFixed(2)} ${currency}`;
+  }
+  if (n < 0) return `-${s}`;
+  return signed ? `+${s}` : s;
+}
+function describeCostDelta(c) {
+  if (c.diffMonthly === void 0) return void 0;
+  const pct = c.pastMonthly && c.pastMonthly > 0 ? ` (${c.diffMonthly >= 0 ? "+" : ""}${Math.round(c.diffMonthly / c.pastMonthly * 100)}%)` : "";
+  return `${formatMoney(c.diffMonthly, c.currency, true)}/mo${pct}`;
+}
+var costIncrease = {
+  id: "PL501",
+  title: "Monthly cost increase above budget",
+  severity: "high",
+  category: "cost",
+  description: "The Infracost estimate for this plan raises the monthly bill by more than `cost.max_monthly_increase` (absolute) or `cost.max_monthly_increase_percent`. Only active when an Infracost file is provided and a threshold is configured.",
+  remediation: "Check the largest cost deltas (instance sizes, NAT gateways, provisioned IOPS, data transfer). Right-size, use Savings Plans/Spot, or get the budget owner's approval and record it with an `ignore` entry.",
+  run({ cost, config }) {
+    if (!cost || cost.diffMonthly === void 0 || cost.diffMonthly <= 0) return [];
+    const reasons = [];
+    if (config.costMaxIncrease !== void 0 && cost.diffMonthly > config.costMaxIncrease) {
+      reasons.push(`more than ${formatMoney(config.costMaxIncrease, cost.currency)}/mo`);
+    }
+    if (config.costMaxIncreasePercent !== void 0 && cost.pastMonthly && cost.pastMonthly > 0) {
+      const pct = cost.diffMonthly / cost.pastMonthly * 100;
+      if (pct > config.costMaxIncreasePercent) reasons.push(`more than ${config.costMaxIncreasePercent}%`);
+    }
+    if (reasons.length === 0) return [];
+    const top = cost.resources.filter((r) => r.diffMonthly > 0).slice(0, 5);
+    return [
+      {
+        severity: "high",
+        address: "(plan)",
+        message: `Estimated monthly cost rises by ${describeCostDelta(cost)} \u2014 ${reasons.join(" and ")}.`,
+        details: top.length ? [`Largest increases: ${top.map((r) => `\`${r.address}\` ${formatMoney(r.diffMonthly, cost.currency, true)}`).join(", ")}`] : []
+      }
+    ];
+  }
+};
 
 // src/core/plan.ts
 var PlanParseError = class extends Error {
@@ -41828,7 +41929,8 @@ var RULES = [
   azurePrivilegedRole,
   gcpIam,
   hardcodedSecrets,
-  outputSecrets
+  outputSecrets,
+  costIncrease
 ];
 
 // src/core/config.ts
@@ -41842,7 +41944,7 @@ var ConfigError = class extends Error {
   problems;
 };
 var FAIL_ON = [...SEVERITIES, "none"];
-var TOP_KEYS = /* @__PURE__ */ new Set(["fail_on", "mass_destroy_threshold", "stateful_types", "critical_types", "disable", "severity_overrides", "ignore", "rules"]);
+var TOP_KEYS = /* @__PURE__ */ new Set(["fail_on", "mass_destroy_threshold", "stateful_types", "critical_types", "disable", "severity_overrides", "ignore", "rules", "cost"]);
 var ACTIONS = /* @__PURE__ */ new Set(["create", "update", "delete", "replace", "read", "no-op"]);
 var OPS = /* @__PURE__ */ new Set(["exists", "absent", "equals", "not_equals", "matches", "not_matches", "in", "not_in", "changed"]);
 function isStringList(v2) {
@@ -41869,6 +41971,15 @@ function validateConfig(input2) {
     else
       for (const [id, sev] of Object.entries(input2.severity_overrides)) {
         if (!SEVERITIES.includes(sev)) p.push(`severity_overrides.${id}: invalid severity \`${String(sev)}\``);
+      }
+  }
+  if (input2.cost !== void 0) {
+    if (!isRecord(input2.cost)) p.push("cost must be a mapping");
+    else
+      for (const [k, v2] of Object.entries(input2.cost)) {
+        if (k !== "max_monthly_increase" && k !== "max_monthly_increase_percent")
+          p.push(`cost: unknown key \`${k}\` (allowed: max_monthly_increase, max_monthly_increase_percent)`);
+        else if (typeof v2 !== "number" || !Number.isFinite(v2) || v2 < 0) p.push(`cost.${k} must be a non-negative number`);
       }
   }
   const customIds = /* @__PURE__ */ new Set();
@@ -41952,12 +42063,14 @@ function resolveConfig(cfg = {}, overrides = {}) {
     severityOverrides: cfg.severity_overrides ?? {},
     ignore: cfg.ignore ?? [],
     rules: cfg.rules ?? [],
+    costMaxIncrease: cfg.cost?.max_monthly_increase,
+    costMaxIncreasePercent: cfg.cost?.max_monthly_increase_percent,
     now: overrides.now ?? /* @__PURE__ */ new Date()
   };
 }
 
 // src/version.ts
-var VERSION3 = "1.0.0";
+var VERSION3 = "1.1.0";
 
 // src/core/custom.ts
 function testCondition(rc, c) {
@@ -42015,6 +42128,9 @@ function runCustomRules(rules, changes) {
 }
 
 // src/core/engine.ts
+function isCostSummary(v2) {
+  return typeof v2 === "object" && v2 !== null && "resources" in v2 && "currency" in v2 && !("projects" in v2);
+}
 var WEIGHT = { critical: 0.5, high: 0.25, medium: 0.08, low: 0.02, info: 0 };
 function riskScore(findings) {
   let safe = 1;
@@ -42043,9 +42159,10 @@ function analyzePlan(rawInput, opts = {}) {
   const raw = assertPlan(rawInput);
   const plan = normalizePlan(raw);
   const config = isResolved(opts.config) ? { ...opts.config, failOn: opts.failOn ?? opts.config.failOn } : resolveConfig(validateConfig(opts.config ?? {}), { failOn: opts.failOn, now: opts.now });
-  return analyzeNormalized(plan, config, opts.name ?? "plan");
+  const cost = opts.cost === void 0 || opts.cost === null ? void 0 : isCostSummary(opts.cost) ? opts.cost : parseInfracost(opts.cost);
+  return analyzeNormalized(plan, config, opts.name ?? "plan", cost);
 }
-function analyzeNormalized(plan, config, name) {
+function analyzeNormalized(plan, config, name, cost) {
   const warnings = [];
   if (plan.errored) warnings.push("Terraform reported errors while planning \u2014 this plan is partial and the review may miss changes.");
   if (!plan.complete) warnings.push("The plan is incomplete (deferred actions); another plan/apply round will be needed.");
@@ -42054,7 +42171,7 @@ function analyzeNormalized(plan, config, name) {
   for (const rule of RULES) {
     if (config.disable.has(rule.id)) continue;
     try {
-      for (const hit of rule.run({ plan, config })) {
+      for (const hit of rule.run({ plan, config, cost })) {
         findings.push({ ...hit, ruleId: rule.id, category: rule.category, title: rule.title, remediation: hit.remediation ?? rule.remediation });
       }
     } catch (e) {
@@ -42113,6 +42230,7 @@ function analyzeNormalized(plan, config, name) {
     findings: active,
     suppressed,
     warnings,
+    cost,
     changes: managedChanges(plan).map((c) => ({
       address: c.address,
       type: c.type,
@@ -42313,10 +42431,23 @@ async function runPlans(o) {
   const reports = [];
   const locators = /* @__PURE__ */ new Map();
   const planUris = /* @__PURE__ */ new Map();
+  if (o.infracost && o.plans.length !== 1) {
+    throw new InputError("--infracost applies to a single plan. Run planlens once per plan (or per matrix job) when using cost estimates.");
+  }
+  let cost;
+  if (o.infracost) {
+    const path4 = (0, import_node_path4.resolve)(cwd, o.infracost);
+    if (!(0, import_node_fs4.existsSync)(path4)) throw new InputError(`Infracost file not found: ${o.infracost}`);
+    try {
+      cost = parseInfracost((0, import_node_fs4.readFileSync)(path4, "utf8"));
+    } catch (e) {
+      throw new InputError(`${o.infracost}: ${e.message}`);
+    }
+  }
   for (const p of o.plans) {
     const raw = loadPlan(p === "-" ? p : (0, import_node_path4.resolve)(cwd, p));
     const name = o.plans.length === 1 && o.name ? o.name : label(p, cwd);
-    const report = analyzePlan(raw, { config: resolved, name });
+    const report = analyzePlan(raw, { config: resolved, name, cost });
     reports.push(report);
     const srcDir = o.sourceDir ? (0, import_node_path4.resolve)(cwd, o.sourceDir) : p === "-" ? cwd : (0, import_node_path4.dirname)((0, import_node_path4.resolve)(cwd, p));
     locators.set(report, new SourceLocator(srcDir, normalizePlan(raw).moduleSources, cwd));
@@ -42449,6 +42580,17 @@ function changesList(r) {
   }
   return out.join("\n");
 }
+function costLine(r) {
+  const c = r.cost;
+  if (!c || c.monthly === void 0 && c.diffMonthly === void 0) return void 0;
+  const parts = [];
+  if (c.pastMonthly !== void 0 && c.monthly !== void 0)
+    parts.push(`${formatMoney(c.pastMonthly, c.currency)} \u2192 ${formatMoney(c.monthly, c.currency)} /mo`);
+  else if (c.monthly !== void 0) parts.push(`${formatMoney(c.monthly, c.currency)} /mo`);
+  const delta = describeCostDelta(c);
+  if (delta) parts.push(`(**${delta}**)`);
+  return `\u{1F4B0} **Cost:** ${parts.join(" ")} \xB7 Infracost estimate`;
+}
 function headline(r) {
   const c = countBySeverity(r);
   const parts = ["critical", "high", "medium", "low"].filter((s) => c[s] > 0).map((s) => `${c[s]} ${s}`);
@@ -42468,6 +42610,21 @@ function reportSections(r, multi) {
       summaryTable(r)
     ].join("\n")
   });
+  const cost = costLine(r);
+  if (cost) s.push({ priority: 0, text: cost });
+  if (r.cost?.resources.length) {
+    const rows = r.cost.resources.slice(0, 10).map((x) => `| \`${cell(x.address)}\` | ${formatMoney(x.diffMonthly, r.cost?.currency ?? "USD", true)} |`);
+    s.push({
+      priority: 3,
+      text: `<details><summary>\u{1F4B0} Cost changes by resource</summary>
+
+| Resource | Monthly \u0394 |
+|---|--:|
+${rows.join("\n")}
+
+</details>`
+    });
+  }
   if (r.warnings.length) s.push({ priority: 0, text: r.warnings.map((w) => `> [!WARNING]
 > ${w}`).join("\n\n") });
   const main = r.findings.filter((f) => f.severity !== "low" && f.severity !== "info");
@@ -42658,6 +42815,13 @@ function renderText(reports, opts = {}) {
       `  ${c("green", `+${s.create} create`)}  ${c("yellow", `~${s.update} update`)}  ${c("magenta", `\xB1${s.replace} replace`)}  ${c("red", `-${s.delete} destroy`)}` + (s.imported ? `  ${c("cyan", `${s.imported} import`)}` : "") + (s.moved ? `  ${c("cyan", `${s.moved} moved`)}` : "") + (s.drifted ? `  ${c("yellow", `${s.drifted} drifted`)}` : "")
     );
     out.push(`  Risk ${c("bold", `${r.score}/100`)} ${tag(r.level)}`);
+    const delta = r.cost ? describeCostDelta(r.cost) : void 0;
+    if (r.cost && (delta || r.cost.monthly !== void 0)) {
+      const total = r.cost.monthly !== void 0 ? `${formatMoney(r.cost.monthly, r.cost.currency)}/mo` : "";
+      out.push(
+        `  Cost ${c("bold", total)}${delta ? ` ${c(r.cost.diffMonthly && r.cost.diffMonthly > 0 ? "yellow" : "green", delta)}` : ""} ${c("dim", "(Infracost)")}`
+      );
+    }
     for (const w of r.warnings) out.push(`  ${c("yellow", "warning:")} ${w}`);
     out.push("");
     const shown = opts.verbose ? r.findings : r.findings.filter((f) => f.severity !== "info" && f.severity !== "low");
@@ -42751,20 +42915,20 @@ function escapeProp(s) {
 function setOutput(env, name, value) {
   if (!env.GITHUB_OUTPUT) return;
   const delim = `planlens_${Math.random().toString(36).slice(2)}`;
-  (0, import_node_fs4.appendFileSync)(env.GITHUB_OUTPUT, `${name}<<${delim}
+  (0, import_node_fs5.appendFileSync)(env.GITHUB_OUTPUT, `${name}<<${delim}
 ${value}
 ${delim}
 `);
 }
 function write(path4, content) {
-  (0, import_node_fs4.mkdirSync)((0, import_node_path5.dirname)((0, import_node_path5.resolve)(path4)), { recursive: true });
-  (0, import_node_fs4.writeFileSync)(path4, content);
+  (0, import_node_fs5.mkdirSync)((0, import_node_path5.dirname)((0, import_node_path5.resolve)(path4)), { recursive: true });
+  (0, import_node_fs5.writeFileSync)(path4, content);
 }
 function readPr(env) {
   const path4 = env.GITHUB_EVENT_PATH;
-  if (!path4 || !(0, import_node_fs4.existsSync)(path4)) return void 0;
+  if (!path4 || !(0, import_node_fs5.existsSync)(path4)) return void 0;
   try {
-    const ev = JSON.parse((0, import_node_fs4.readFileSync)(path4, "utf8"));
+    const ev = JSON.parse((0, import_node_fs5.readFileSync)(path4, "utf8"));
     if (!ev.pull_request?.number) return void 0;
     return { number: ev.pull_request.number, labels: (ev.pull_request.labels ?? []).map((l) => String(l.name ?? "")) };
   } catch {
@@ -42802,7 +42966,8 @@ async function runAction({ env, log, fetchImpl }) {
       failOn: failOn || void 0,
       sourceDir: input(env, "source-dir") || void 0,
       ai: ai || void 0,
-      aiModel: input(env, "ai-model") || void 0
+      aiModel: input(env, "ai-model") || void 0,
+      infracost: input(env, "infracost") || void 0
     });
   } catch (e) {
     log(`::error::planlens: ${escapeData(e.message)}`);
@@ -42831,7 +42996,7 @@ async function runAction({ env, log, fetchImpl }) {
     }
   }
   if (bool(input(env, "step-summary", "true")) && env.GITHUB_STEP_SUMMARY) {
-    (0, import_node_fs4.appendFileSync)(env.GITHUB_STEP_SUMMARY, renderMarkdown(reports, { acceptedBy: accepted ? acceptLabel : void 0 }));
+    (0, import_node_fs5.appendFileSync)(env.GITHUB_STEP_SUMMARY, renderMarkdown(reports, { acceptedBy: accepted ? acceptLabel : void 0 }));
   }
   const commentMode = input(env, "comment", "always").toLowerCase();
   if (pr && commentMode !== "never" && commentMode !== "false") {

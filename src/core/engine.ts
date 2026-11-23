@@ -1,10 +1,11 @@
 import { VERSION } from "../version.js";
 import { resolveConfig, validateConfig } from "./config.js";
+import { parseInfracost } from "./cost.js";
 import { runCustomRules } from "./custom.js";
 import { assertPlan, managedChanges, normalizePlan, summarize } from "./plan.js";
 import { SEVERITY_RANK } from "./rules/helpers.js";
 import { RULES } from "./rules/index.js";
-import type { FailOn, Finding, NormalizedPlan, PlanlensConfig, Report, ResolvedConfig, RiskLevel, Severity } from "./types.js";
+import type { CostSummary, FailOn, Finding, NormalizedPlan, PlanlensConfig, Report, ResolvedConfig, RiskLevel, Severity } from "./types.js";
 import { globMatch } from "./util.js";
 
 export interface AnalyzeOptions {
@@ -14,6 +15,12 @@ export interface AnalyzeOptions {
   failOn?: FailOn;
   name?: string;
   now?: Date;
+  /** Infracost JSON (raw object/string) or an already-parsed CostSummary. */
+  cost?: unknown;
+}
+
+function isCostSummary(v: unknown): v is CostSummary {
+  return typeof v === "object" && v !== null && "resources" in v && "currency" in v && !("projects" in v);
 }
 
 const WEIGHT: Record<Severity, number> = { critical: 0.5, high: 0.25, medium: 0.08, low: 0.02, info: 0 };
@@ -53,10 +60,11 @@ export function analyzePlan(rawInput: unknown, opts: AnalyzeOptions = {}): Repor
   const config = isResolved(opts.config)
     ? { ...opts.config, failOn: opts.failOn ?? opts.config.failOn }
     : resolveConfig(validateConfig(opts.config ?? {}), { failOn: opts.failOn, now: opts.now });
-  return analyzeNormalized(plan, config, opts.name ?? "plan");
+  const cost = opts.cost === undefined || opts.cost === null ? undefined : isCostSummary(opts.cost) ? opts.cost : parseInfracost(opts.cost);
+  return analyzeNormalized(plan, config, opts.name ?? "plan", cost);
 }
 
-export function analyzeNormalized(plan: NormalizedPlan, config: ResolvedConfig, name: string): Report {
+export function analyzeNormalized(plan: NormalizedPlan, config: ResolvedConfig, name: string, cost?: CostSummary): Report {
   const warnings: string[] = [];
   if (plan.errored) warnings.push("Terraform reported errors while planning — this plan is partial and the review may miss changes.");
   if (!plan.complete) warnings.push("The plan is incomplete (deferred actions); another plan/apply round will be needed.");
@@ -67,7 +75,7 @@ export function analyzeNormalized(plan: NormalizedPlan, config: ResolvedConfig, 
   for (const rule of RULES) {
     if (config.disable.has(rule.id)) continue;
     try {
-      for (const hit of rule.run({ plan, config })) {
+      for (const hit of rule.run({ plan, config, cost })) {
         findings.push({ ...hit, ruleId: rule.id, category: rule.category, title: rule.title, remediation: hit.remediation ?? rule.remediation });
       }
     } catch (e) {
@@ -134,6 +142,7 @@ export function analyzeNormalized(plan: NormalizedPlan, config: ResolvedConfig, 
     findings: active,
     suppressed,
     warnings,
+    cost,
     changes: managedChanges(plan).map((c) => ({
       address: c.address,
       type: c.type,

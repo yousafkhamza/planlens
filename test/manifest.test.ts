@@ -46,6 +46,9 @@ describe("workflows and examples", () => {
     "examples/github-actions/terraform-pr.yml",
     "examples/github-actions/multi-env-matrix.yml",
     "examples/gitlab/.gitlab-ci.yml",
+    "examples/github-actions/with-infracost.yml",
+    "examples/atlantis/repos.yaml",
+    "examples/azure-devops/azure-pipelines.yml",
   ];
   it.each(files)("%s is valid YAML", (f) => {
     expect(() => parse(read(f), { strict: true, uniqueKeys: true })).not.toThrow();

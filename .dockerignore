@@ -1,0 +1,14 @@
+.git
+.github
+node_modules
+coverage
+dist
+test
+examples
+*.md
+!docs/*.md
+.terraform
+*.tfstate*
+*.tfplan
+tf.plan
+planlens.*

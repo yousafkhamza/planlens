@@ -76,6 +76,9 @@
   });
 
   $("#ver").textContent = `v${PL.VERSION}`;
+  document.querySelectorAll("[data-rule-count]").forEach((n) => {
+    n.textContent = String(PL.RULES.length);
+  });
 
   // ---------------------------------------------------------------- analyzer
   const paste = $("#paste");
@@ -147,32 +150,97 @@
     );
     result.append(actions);
 
+    const cost = report.cost;
+    if (cost && (cost.monthly !== undefined || cost.diffMonthly !== undefined)) {
+      const delta = PL.describeCostDelta(cost);
+      const top = cost.resources.slice(0, 4);
+      result.append(
+        el(
+          "div",
+          { class: "cost", "aria-label": "Infracost estimate" },
+          el("span", { text: "💰 Monthly cost" }),
+          cost.pastMonthly !== undefined && cost.monthly !== undefined
+            ? el("b", { text: `${PL.formatMoney(cost.pastMonthly, cost.currency)} → ${PL.formatMoney(cost.monthly, cost.currency)}` })
+            : cost.monthly !== undefined
+              ? el("b", { text: PL.formatMoney(cost.monthly, cost.currency) })
+              : null,
+          delta ? el("span", { class: cost.diffMonthly > 0 ? "up" : "down", text: delta }) : null,
+          el("span", { class: "muted small", text: "Infracost estimate" }),
+          top.length ? el("ul", {}, top.map((r) => el("li", {}, el("code", { text: r.address }), ` ${PL.formatMoney(r.diffMonthly, cost.currency, true)}/mo`))) : null,
+        ),
+      );
+    }
+
     for (const w of report.warnings) result.append(el("div", { class: "warn" }, "⚠️ ", rich(w)));
 
     if (report.findings.length === 0) {
       result.append(el("div", { class: "clean", text: s.total === 0 ? "✓ No changes — infrastructure matches the configuration." : "✓ No risky changes found." }));
     }
 
+    // Filter bar for big plans: toggle severities and search text/addresses.
+    const groups = [];
+    const active = new Set(SEV);
+    const query = el("input", { type: "search", placeholder: "Filter findings (address, rule, text)", "aria-label": "Filter findings" });
+    const emptyNote = el("p", { class: "filter-empty", text: "No findings match the filter.", hidden: true });
+    function applyFilter() {
+      const q = query.value.trim().toLowerCase();
+      let shown = 0;
+      for (const g of groups) {
+        let n = 0;
+        for (const item of g.items) {
+          const ok = active.has(g.sev) && (!q || item.text.includes(q));
+          item.node.hidden = !ok;
+          if (ok) n++;
+        }
+        g.title.hidden = n === 0;
+        g.list.hidden = n === 0;
+        shown += n;
+      }
+      emptyNote.hidden = shown !== 0 || report.findings.length === 0;
+    }
+    if (report.findings.length > 3) {
+      const bar = el("div", { class: "filter-bar", role: "group", "aria-label": "Filter findings by severity" });
+      for (const sev of SEV) {
+        const n = report.findings.filter((f) => f.severity === sev).length;
+        if (!n) continue;
+        const chip = el("button", { class: "chip", type: "button", "aria-pressed": "true", text: `${sev} ${n}` });
+        chip.addEventListener("click", () => {
+          if (active.has(sev)) active.delete(sev);
+          else active.add(sev);
+          chip.setAttribute("aria-pressed", String(active.has(sev)));
+          applyFilter();
+        });
+        bar.append(chip);
+      }
+      query.addEventListener("input", applyFilter);
+      bar.append(query);
+      result.append(bar);
+    }
+
     for (const sev of SEV) {
       const group = report.findings.filter((f) => f.severity === sev);
       if (!group.length) continue;
-      result.append(el("p", { class: "group-title", text: `${sev} (${group.length})` }));
+      const title = el("p", { class: "group-title", text: `${sev} (${group.length})` });
+      result.append(title);
       const list = el("div", { class: "findings" });
+      const g = { sev, title, list, items: [] };
+      groups.push(g);
       for (const f of group) {
         const body = el("div", { class: "body" });
         if (f.details.length) body.append(el("ul", {}, f.details.map(detail)));
         if (f.remediation) body.append(el("p", { class: "fix" }, el("strong", { text: "Fix: " }), rich(f.remediation)));
-        list.append(
-          el(
-            "details",
-            { class: `finding ${f.severity}`, open: sev === "critical" ? true : undefined },
-            el("summary", {}, el("span", { class: `sev sev-${f.severity}`, text: f.severity.toUpperCase() }), el("span", { class: "rid", text: `${f.ruleId} · ${f.title}` }), el("span", { class: "msg" }, rich(f.message))),
-            body,
-          ),
+        const node = el(
+          "details",
+          { class: `finding ${f.severity}`, open: sev === "critical" ? true : undefined },
+          el("summary", {}, el("span", { class: `sev sev-${f.severity}`, text: f.severity.toUpperCase() }), el("span", { class: "rid", text: `${f.ruleId} · ${f.title}` }), el("span", { class: "msg" }, rich(f.message))),
+          body,
         );
+        g.items.push({ node, text: `${f.ruleId} ${f.title} ${f.address} ${f.message} ${f.details.join(" ")}`.toLowerCase() });
+        list.append(node);
       }
       result.append(list);
     }
+    result.append(emptyNote);
 
     if (report.suppressed.length) {
       result.append(el("p", { class: "group-title", text: `accepted risks (${report.suppressed.length})` }));
@@ -211,9 +279,18 @@
     } catch (e) {
       return showError(e.message);
     }
+    let cost;
+    const costText = $("#infracost").value.trim();
+    if (costText) {
+      try {
+        cost = PL.parseInfracost(costText);
+      } catch (e) {
+        return showError(e.message);
+      }
+    }
     try {
       const plan = PL.parsePlanText(text);
-      const report = PL.analyzePlan(plan, { config, failOn: $("#failon").value, name: currentName });
+      const report = PL.analyzePlan(plan, { config, failOn: $("#failon").value, name: currentName, cost });
       renderReport(report);
       if (window.matchMedia("(max-width: 960px)").matches) result.scrollIntoView({ behavior: "smooth", block: "start" });
     } catch (e) {
@@ -232,7 +309,15 @@
     try {
       const res = await fetch(`samples/${name}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      loadText(await res.text(), name);
+      const text = await res.text();
+      // Samples may ship with a matching Infracost estimate (<name>.infracost.json).
+      let costText = "";
+      if (btn?.dataset.cost) {
+        const c = await fetch(`samples/${btn.dataset.cost}`);
+        if (c.ok) costText = await c.text();
+      }
+      $("#infracost").value = costText;
+      loadText(text, name);
     } catch (e) {
       showError(`Could not load sample: ${e.message}`);
     }
@@ -254,6 +339,7 @@
   });
   $("#clear").addEventListener("click", () => {
     paste.value = "";
+    $("#infracost").value = "";
     errorBox.hidden = true;
     currentName = "plan.json";
     document.querySelectorAll("[data-sample]").forEach((b) => b.setAttribute("aria-pressed", "false"));

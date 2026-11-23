@@ -10,7 +10,7 @@ export class ConfigError extends Error {
 }
 
 const FAIL_ON: readonly string[] = [...SEVERITIES, "none"];
-const TOP_KEYS = new Set(["fail_on", "mass_destroy_threshold", "stateful_types", "critical_types", "disable", "severity_overrides", "ignore", "rules"]);
+const TOP_KEYS = new Set(["fail_on", "mass_destroy_threshold", "stateful_types", "critical_types", "disable", "severity_overrides", "ignore", "rules", "cost"]);
 const ACTIONS = new Set(["create", "update", "delete", "replace", "read", "no-op"]);
 const OPS = new Set(["exists", "absent", "equals", "not_equals", "matches", "not_matches", "in", "not_in", "changed"]);
 
@@ -41,6 +41,16 @@ export function validateConfig(input: unknown): PlanlensConfig {
     else
       for (const [id, sev] of Object.entries(input.severity_overrides)) {
         if (!SEVERITIES.includes(sev as Severity)) p.push(`severity_overrides.${id}: invalid severity \`${String(sev)}\``);
+      }
+  }
+
+  if (input.cost !== undefined) {
+    if (!isRecord(input.cost)) p.push("cost must be a mapping");
+    else
+      for (const [k, v] of Object.entries(input.cost)) {
+        if (k !== "max_monthly_increase" && k !== "max_monthly_increase_percent")
+          p.push(`cost: unknown key \`${k}\` (allowed: max_monthly_increase, max_monthly_increase_percent)`);
+        else if (typeof v !== "number" || !Number.isFinite(v) || v < 0) p.push(`cost.${k} must be a non-negative number`);
       }
   }
 
@@ -128,6 +138,8 @@ export function resolveConfig(cfg: PlanlensConfig = {}, overrides: { failOn?: Fa
     severityOverrides: cfg.severity_overrides ?? {},
     ignore: cfg.ignore ?? [],
     rules: cfg.rules ?? [],
+    costMaxIncrease: cfg.cost?.max_monthly_increase,
+    costMaxIncreasePercent: cfg.cost?.max_monthly_increase_percent,
     now: overrides.now ?? new Date(),
   };
 }

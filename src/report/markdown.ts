@@ -1,3 +1,4 @@
+import { describeCostDelta, formatMoney } from "../core/cost.js";
 import type { Finding, Report } from "../core/types.js";
 import { plural } from "../core/util.js";
 import { countBySeverity, DOCS_URL, KIND_ICON, KIND_LABEL, LEVEL_ICON, overallPassed, RULES_URL, SEVERITY_ICON } from "./common.js";
@@ -69,6 +70,19 @@ function changesList(r: Report): string {
   return out.join("\n");
 }
 
+/** "💰 **Cost:** $1,200.00 → $1,612.30 /mo (**+$412.30/mo (+34%)**) · Infracost estimate" */
+export function costLine(r: Report): string | undefined {
+  const c = r.cost;
+  if (!c || (c.monthly === undefined && c.diffMonthly === undefined)) return undefined;
+  const parts: string[] = [];
+  if (c.pastMonthly !== undefined && c.monthly !== undefined)
+    parts.push(`${formatMoney(c.pastMonthly, c.currency)} → ${formatMoney(c.monthly, c.currency)} /mo`);
+  else if (c.monthly !== undefined) parts.push(`${formatMoney(c.monthly, c.currency)} /mo`);
+  const delta = describeCostDelta(c);
+  if (delta) parts.push(`(**${delta}**)`);
+  return `💰 **Cost:** ${parts.join(" ")} · Infracost estimate`;
+}
+
 function headline(r: Report): string {
   const c = countBySeverity(r);
   const parts = (["critical", "high", "medium", "low"] as const).filter((s) => c[s] > 0).map((s) => `${c[s]} ${s}`);
@@ -94,6 +108,15 @@ function reportSections(r: Report, multi: boolean): Section[] {
       summaryTable(r),
     ].join("\n"),
   });
+  const cost = costLine(r);
+  if (cost) s.push({ priority: 0, text: cost });
+  if (r.cost?.resources.length) {
+    const rows = r.cost.resources.slice(0, 10).map((x) => `| \`${cell(x.address)}\` | ${formatMoney(x.diffMonthly, r.cost?.currency ?? "USD", true)} |`);
+    s.push({
+      priority: 3,
+      text: `<details><summary>💰 Cost changes by resource</summary>\n\n| Resource | Monthly Δ |\n|---|--:|\n${rows.join("\n")}\n\n</details>`,
+    });
+  }
   if (r.warnings.length) s.push({ priority: 0, text: r.warnings.map((w) => `> [!WARNING]\n> ${w}`).join("\n\n") });
 
   const main = r.findings.filter((f) => f.severity !== "low" && f.severity !== "info");

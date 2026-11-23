@@ -1,0 +1,16 @@
+# Server-side repos.yaml: run planlens after every `atlantis plan`.
+# The review appears in the Atlantis plan comment; a failing gate blocks
+# `atlantis apply` when you require the plan workflow to succeed.
+# Requires Node 20+ in the Atlantis image, or swap the command for the
+# container: docker run --rm -v "$PWD:/work" ghcr.io/yousafkhamza/planlens:1 ...
+repos:
+  - id: /.*/
+    workflow: planlens
+workflows:
+  planlens:
+    plan:
+      steps:
+        - init
+        - plan
+        - run: terraform show -json "$PLANFILE" > plan.json
+        - run: npx --yes planlens@1 plan.json --fail-on high --format markdown

@@ -1,0 +1,26 @@
+# Azure DevOps: plan, review with the planlens container, publish SARIF/markdown.
+trigger: none
+pr: [main]
+
+pool:
+  vmImage: ubuntu-latest
+
+steps:
+  - script: |
+      terraform init -input=false
+      terraform plan -input=false -out=tf.plan
+      terraform show -json tf.plan > plan.json
+    workingDirectory: infra
+    displayName: terraform plan
+
+  - script: |
+      docker run --rm -u "$(id -u)" -v "$(Build.SourcesDirectory)/infra:/work" \
+        ghcr.io/yousafkhamza/planlens:1 plan.json --fail-on high \
+        --out markdown=planlens.md --out sarif=planlens.sarif
+    displayName: planlens review
+
+  - task: PublishBuildArtifacts@1
+    condition: always()
+    inputs:
+      PathtoPublish: infra/planlens.md
+      ArtifactName: planlens

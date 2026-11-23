@@ -1,0 +1,39 @@
+{
+  "version": "0.2",
+  "metadata": { "infracostCommand": "breakdown", "vcsBranch": "feature/payments-pg16" },
+  "currency": "USD",
+  "projects": [
+    {
+      "name": "envs/prod",
+      "metadata": { "path": "envs/prod", "type": "terraform_plan_json" },
+      "pastBreakdown": {
+        "resources": [
+          { "name": "module.data.aws_db_instance.payments", "monthlyCost": "1104.32" },
+          { "name": "aws_eks_cluster.main", "monthlyCost": "73" },
+          { "name": "aws_ecs_service.worker", "monthlyCost": "963.18" }
+        ],
+        "totalMonthlyCost": "2140.5"
+      },
+      "breakdown": {
+        "resources": [
+          { "name": "module.data.aws_db_instance.payments", "monthlyCost": "1484.52" },
+          { "name": "aws_eks_cluster.main", "monthlyCost": "73" },
+          { "name": "aws_ecs_service.worker", "monthlyCost": "995.28" }
+        ],
+        "totalMonthlyCost": "2552.8"
+      },
+      "diff": {
+        "resources": [
+          { "name": "module.data.aws_db_instance.payments", "monthlyCost": "380.2" },
+          { "name": "aws_ecs_service.worker", "monthlyCost": "32.1" },
+          { "name": "aws_eks_cluster.main", "monthlyCost": "0" }
+        ],
+        "totalMonthlyCost": "412.3"
+      }
+    }
+  ],
+  "totalMonthlyCost": "2552.8",
+  "pastTotalMonthlyCost": "2140.5",
+  "diffTotalMonthlyCost": "412.3",
+  "timeGenerated": "2026-11-23T10:00:00Z"
+}

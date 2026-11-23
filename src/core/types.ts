@@ -11,7 +11,7 @@ export type FailOn = Severity | "none";
 
 export type ChangeKind = "create" | "update" | "delete" | "replace" | "read" | "no-op";
 
-export type Category = "data-loss" | "availability" | "security" | "iam" | "network" | "secrets" | "refactor" | "drift" | "hygiene" | "custom";
+export type Category = "data-loss" | "availability" | "security" | "iam" | "network" | "secrets" | "refactor" | "drift" | "hygiene" | "cost" | "custom";
 
 /** Raw Terraform JSON plan (subset we rely on). See `terraform show -json` docs. */
 export interface RawPlan {
@@ -135,6 +135,21 @@ export interface Finding {
 export interface RuleContext {
   plan: NormalizedPlan;
   config: ResolvedConfig;
+  /** Cost estimate for this plan (from Infracost), when provided. */
+  cost?: CostSummary;
+}
+
+/** Monthly cost estimate, normalized from Infracost JSON. */
+export interface CostSummary {
+  currency: string;
+  /** Monthly cost before the change (prior state), if known. */
+  pastMonthly?: number;
+  /** Monthly cost after the change. */
+  monthly?: number;
+  /** after − before. */
+  diffMonthly?: number;
+  /** Per-resource monthly deltas, largest absolute change first (max 20). */
+  resources: Array<{ address: string; diffMonthly: number }>;
 }
 
 export interface Rule {
@@ -181,6 +196,7 @@ export interface Report {
   /** Warnings about the run itself (expired ignores, plan errors, etc). */
   warnings: string[];
   changes: ResourceChangeSummary[];
+  cost?: CostSummary;
   aiSummary?: string;
 }
 
@@ -242,6 +258,12 @@ export interface PlanlensConfig {
   severity_overrides?: Record<string, Severity>;
   ignore?: IgnoreEntry[];
   rules?: CustomRuleConfig[];
+  cost?: {
+    /** PL501 fires when the monthly cost increase is above this amount. */
+    max_monthly_increase?: number;
+    /** PL501 fires when the monthly cost increase is above this percentage of the previous cost. */
+    max_monthly_increase_percent?: number;
+  };
 }
 
 export interface ResolvedConfig {
@@ -253,6 +275,8 @@ export interface ResolvedConfig {
   severityOverrides: Record<string, Severity>;
   ignore: IgnoreEntry[];
   rules: CustomRuleConfig[];
+  costMaxIncrease?: number;
+  costMaxIncreasePercent?: number;
   /** "today" used for ignore expiry — injectable for deterministic tests. */
   now: Date;
 }

@@ -96,6 +96,7 @@ export async function runAction({ env, log, fetchImpl }: ActionEnv): Promise<num
       sourceDir: input(env, "source-dir") || undefined,
       ai: ai || undefined,
       aiModel: input(env, "ai-model") || undefined,
+      infracost: input(env, "infracost") || undefined,
     });
   } catch (e) {
     log(`::error::planlens: ${escapeData((e as Error).message)}`);

@@ -2,6 +2,25 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [1.1.0] - 2026-11-23
+
+### Added
+
+- **Cost:** `--infracost` / Action input `infracost` adds the monthly cost delta (total and per resource) to every report, and new rule **PL501** gates on `cost.max_monthly_increase` / `cost.max_monthly_increase_percent`.
+- **Container image** `ghcr.io/yousafkhamza/planlens` (amd64/arm64, non-root, digest-pinned base, SBOM + provenance) for Jenkins, Azure DevOps, Bitbucket and Atlantis.
+- Examples for Atlantis, Azure DevOps, Jenkins and GitHub Actions + Infracost.
+- Web UI: cost panel, optional Infracost input, severity/text filter for large plans, rule count rendered from the engine.
+
+### Changed
+
+- Release can be started from the Actions tab; npm publish is skipped (with a warning) when `NPM_TOKEN` is not set; container is published on every release.
+- `@types/node` pinned to the minimum supported Node line; Dependabot ignores its major bumps.
+
+### Fixed
+
+- `action.yml` failed to load on GitHub (unquoted `: ` in a description); manifest, workflow and example YAML are now validated in tests.
+- Pages deployment workflow restored.
+
 ## [1.0.0] - 2026-11-23
 
 ### Added

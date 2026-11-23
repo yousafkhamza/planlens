@@ -1,0 +1,29 @@
+// Jenkins declarative pipeline using the planlens container.
+pipeline {
+  agent any
+  stages {
+    stage('Plan') {
+      steps {
+        dir('infra') {
+          sh 'terraform init -input=false'
+          sh 'terraform plan -input=false -out=tf.plan'
+          sh 'terraform show -json tf.plan > plan.json'
+        }
+      }
+    }
+    stage('Review') {
+      steps {
+        dir('infra') {
+          // exit 1 = gate failed → stage fails; reports are archived either way
+          sh '''docker run --rm -u "$(id -u)" -v "$PWD:/work" ghcr.io/yousafkhamza/planlens:1 \
+                plan.json --fail-on high --out markdown=planlens.md --out sarif=planlens.sarif'''
+        }
+      }
+      post {
+        always {
+          archiveArtifacts artifacts: 'infra/planlens.*', allowEmptyArchive: true
+        }
+      }
+    }
+  }
+}

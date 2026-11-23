@@ -1,0 +1,32 @@
+# Risk + cost in one PR comment. Needs an Infracost API key (free tier works).
+name: terraform-pr-cost
+on:
+  pull_request:
+permissions:
+  contents: read
+  pull-requests: write
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_wrapper: false
+      - working-directory: infra
+        run: |
+          terraform init -input=false
+          terraform plan -input=false -lock=false -out=tf.plan
+          terraform show -json tf.plan > plan.json
+      - uses: infracost/actions/setup@<pin-a-sha> # v3
+        with:
+          api-key: ${{ secrets.INFRACOST_API_KEY }}
+      - run: infracost breakdown --path infra/plan.json --format json --out-file infra/infracost.json
+      - uses: yousafkhamza/planlens@v1
+        with:
+          plan: infra/plan.json
+          infracost: infra/infracost.json
+          source-dir: infra
+          # .planlens.yml:  cost: { max_monthly_increase: 500 }

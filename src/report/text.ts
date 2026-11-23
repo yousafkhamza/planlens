@@ -1,3 +1,4 @@
+import { describeCostDelta, formatMoney } from "../core/cost.js";
 import type { Report, RiskLevel, Severity } from "../core/types.js";
 import { overallPassed } from "./common.js";
 
@@ -28,6 +29,13 @@ export function renderText(reports: Report[], opts: TextOptions = {}): string {
         (s.drifted ? `  ${c("yellow", `${s.drifted} drifted`)}` : ""),
     );
     out.push(`  Risk ${c("bold", `${r.score}/100`)} ${tag(r.level)}`);
+    const delta = r.cost ? describeCostDelta(r.cost) : undefined;
+    if (r.cost && (delta || r.cost.monthly !== undefined)) {
+      const total = r.cost.monthly !== undefined ? `${formatMoney(r.cost.monthly, r.cost.currency)}/mo` : "";
+      out.push(
+        `  Cost ${c("bold", total)}${delta ? ` ${c(r.cost.diffMonthly && r.cost.diffMonthly > 0 ? "yellow" : "green", delta)}` : ""} ${c("dim", "(Infracost)")}`,
+      );
+    }
     for (const w of r.warnings) out.push(`  ${c("yellow", "warning:")} ${w}`);
     out.push("");
 

@@ -58,7 +58,7 @@
             <a class="btn btn-ghost" href="#install">Add to CI in 2 minutes</a>
           </div>
           <ul class="pills" aria-label="Highlights">
-            <li>41 built-in rules</li>
+            <li><span data-rule-count>42</span> built-in rules</li>
             <li>AWS · Azure · GCP · Kubernetes</li>
             <li>Sticky PR comment + SARIF</li>
             <li>Zero runtime dependencies</li>
@@ -111,7 +111,7 @@
           <div class="input-panel">
             <div class="samples" role="group" aria-label="Load a sample plan">
               <span class="muted small">Samples:</span>
-              <button class="chip" type="button" data-sample="prod-change.json">Risky prod change</button>
+              <button class="chip" type="button" data-sample="prod-change.json" data-cost="prod-change.infracost.json">Risky prod change + cost</button>
               <button class="chip" type="button" data-sample="aws-create.json">Insecure AWS stack</button>
               <button class="chip" type="button" data-sample="lifecycle.json">Refactor + drift</button>
               <button class="chip" type="button" data-sample="noop.json">Clean plan</button>
@@ -139,7 +139,9 @@
                   <option value="none">none (report only)</option>
                 </select>
                 <label class="label" for="config">Config (YAML)</label>
-                <textarea id="config" class="short" spellcheck="false" placeholder="disable: [PL108]&#10;ignore:&#10;  - rule: PL201&#10;    address: aws_security_group.public_alb&#10;    reason: Public ALB behind WAF"></textarea>
+                <textarea id="config" class="short" spellcheck="false" placeholder="disable: [PL108]&#10;cost:&#10;  max_monthly_increase: 500&#10;ignore:&#10;  - rule: PL201&#10;    address: aws_security_group.public_alb&#10;    reason: Public ALB behind WAF"></textarea>
+                <label class="label" for="infracost">Infracost JSON <span class="muted">(optional, adds the monthly cost delta)</span></label>
+                <textarea id="infracost" class="short" spellcheck="false" placeholder="infracost breakdown --path plan.json --format json"></textarea>
               </div>
             </details>
 
@@ -166,7 +168,7 @@
         <h2 id="how-title" class="section-title">How it works</h2>
         <ol class="steps">
           <li><span class="step-n">1</span><h3>Parse</h3><p>Reads <code>terraform show -json</code> (or the binary plan). It normalizes creates, updates, destroys, <b>replaces</b>, imports, moves and drift, and records <em>which attribute</em> forced each replacement.</p></li>
-          <li><span class="step-n">2</span><h3>Check</h3><p>41 rules look at <b>what this plan introduces</b>: data loss, blast radius, refactor mistakes, network exposure, IAM widening, disabled safeguards and plaintext secrets. Your own rules go in YAML.</p></li>
+          <li><span class="step-n">2</span><h3>Check</h3><p><span data-rule-count>42</span> rules look at <b>what this plan introduces</b>: data loss, blast radius, refactor mistakes, network exposure, IAM widening, disabled safeguards, plaintext secrets and (with Infracost) cost. Your own rules go in YAML.</p></li>
           <li><span class="step-n">3</span><h3>Score</h3><p>A 0–100 risk score and a level per plan. Accepted risks need a reason and can expire, so exceptions don't become permanent debt.</p></li>
           <li><span class="step-n">4</span><h3>Report &amp; gate</h3><p>A sticky PR comment, SARIF for the Security tab, inline annotations on the <code>.tf</code> line, a job summary and JSON. The exit code blocks the merge.</p></li>
         </ol>
@@ -182,8 +184,10 @@
           <article class="card"><h3>🚚 Suggests the <code>moved</code> block</h3><p>Detects renames, moves into modules and <code>count</code> index shifts, and gives you the exact HCL that keeps the existing object.</p></article>
           <article class="card"><h3>🔐 DevSecOps checks</h3><p>0.0.0.0/0 on admin/DB ports, <code>*:*</code>, iam:PassRole on <code>*</code>, GitHub OIDC trust without <code>sub</code>, public buckets, IMDSv1, plaintext keys.</p></article>
           <article class="card"><h3>🧾 Audit-ready</h3><p>SARIF and JSON as change-review evidence (ISO 27001 A.8.32, PCI DSS 6.5, SOC 2 CC8). Ignores need a written reason.</p></article>
+          <article class="card"><h3>💰 Cost next to risk</h3><p>Feed it your Infracost JSON to show the monthly cost delta in the same PR comment, and gate on a budget (<code>cost.max_monthly_increase</code>).</p></article>
           <article class="card"><h3>🧩 Org rules, no code</h3><p>"No destroys in <code>module.prod_*</code>", "CostCenter tag required". Match on actions, type and address globs, plus attribute conditions.</p></article>
           <article class="card"><h3>🤖 Optional AI summary</h3><p>Claude, OpenAI-compatible or local Ollama write a plain-English review. It only receives addresses and findings, never values, and never decides pass/fail.</p></article>
+          <article class="card"><h3>🌐 Runs in any CI</h3><p>GitHub Action, <code>npx</code>, or a Docker image for GitLab, Azure DevOps, Jenkins, Bitbucket and Atlantis. Works with OpenTofu and Terragrunt plans.</p></article>
         </div>
       </div>
     </section>
@@ -210,6 +214,7 @@
         <div class="tabs" role="tablist" aria-label="Install options">
           <button role="tab" aria-selected="true" aria-controls="tab-gha" id="t-gha">GitHub Actions</button>
           <button role="tab" aria-selected="false" aria-controls="tab-cli" id="t-cli" tabindex="-1">CLI</button>
+          <button role="tab" aria-selected="false" aria-controls="tab-docker" id="t-docker" tabindex="-1">Docker</button>
           <button role="tab" aria-selected="false" aria-controls="tab-gitlab" id="t-gitlab" tabindex="-1">GitLab CI</button>
           <button role="tab" aria-selected="false" aria-controls="tab-config" id="t-config" tabindex="-1">.planlens.yml</button>
         </div>
@@ -249,6 +254,17 @@ npx planlens envs/*/plan.json \
   --out sarif=planlens.sarif --out json=planlens.json
 
 # exit codes: 0 passed · 1 gate failed · 2 usage/input error</code></pre></div>
+          </div>
+          <div role="tabpanel" id="tab-docker" aria-labelledby="t-docker" hidden>
+            <div class="code"><button class="copy" type="button">Copy</button><pre><code># Jenkins, Azure DevOps, Bitbucket, Atlantis — anything that runs containers
+docker run --rm -u "$(id -u)" -v "$PWD:/work" ghcr.io/yousafkhamza/planlens:1 \
+  plan.json --fail-on high \
+  --out markdown=planlens.md --out sarif=planlens.sarif
+
+# with a cost estimate
+infracost breakdown --path plan.json --format json --out-file infracost.json
+docker run --rm -v "$PWD:/work" ghcr.io/yousafkhamza/planlens:1 plan.json --infracost infracost.json</code></pre></div>
+            <p class="muted small">Multi-arch (amd64/arm64), runs as non-root, and ships with an SBOM and provenance.</p>
           </div>
           <div role="tabpanel" id="tab-gitlab" aria-labelledby="t-gitlab" hidden>
             <div class="code"><button class="copy" type="button">Copy</button><pre><code>planlens:

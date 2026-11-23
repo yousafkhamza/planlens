@@ -126,3 +126,25 @@ describe("cli", () => {
     expect(r.err()).toContain("unknown key `typo`");
   });
 });
+
+describe("cli --infracost", () => {
+  const plan = "../../docs/samples/prod-change.json";
+  it("adds the cost delta and gates on cost thresholds", async () => {
+    const d = mkdtempSync(join(tmpdir(), "planlens-cost-"));
+    writeFileSync(join(d, "cfg.yml"), "fail_on: high\ndisable: [PL001, PL002, PL003, PL006, PL101, PL110, PL201, PL306]\ncost:\n  max_monthly_increase: 100\n");
+    const r = io();
+    const code = await main([plan, "--infracost", "infracost/prod-change.json", "-c", join(d, "cfg.yml"), "-f", "markdown"], r.io);
+    expect(r.out()).toContain("+$412.30/mo");
+    expect(r.out()).toContain("`PL501`");
+    expect(code).toBe(EXIT.GATE_FAILED);
+  });
+  it.each([
+    [[plan, "--infracost", "missing.json"], /Infracost file not found/],
+    [[plan, "--infracost", "real/noop.json"], /does not look like Infracost/],
+    [[plan, AWS, "--infracost", "infracost/prod-change.json"], /single plan/],
+  ])("rejects bad input: %j", async (args, re) => {
+    const r = io();
+    expect(await main(args as string[], r.io)).toBe(EXIT.ERROR);
+    expect(r.err()).toMatch(re);
+  });
+});

@@ -4,6 +4,7 @@
  */
 import { parse as parseYaml } from "yaml";
 import { ConfigError, validateConfig } from "./core/config.js";
+import { describeCostDelta, formatMoney, parseInfracost } from "./core/cost.js";
 import { analyzePlan } from "./core/engine.js";
 import { PlanParseError, parsePlanText } from "./core/plan.js";
 import { RULES } from "./core/rules/index.js";
@@ -16,7 +17,20 @@ function parseConfigText(text: string) {
   return validateConfig(parseYaml(text));
 }
 
-const api = { analyzePlan, parsePlanText, parseConfigText, renderMarkdown, renderSarif, RULES, VERSION, PlanParseError, ConfigError };
+const api = {
+  analyzePlan,
+  parsePlanText,
+  parseConfigText,
+  parseInfracost,
+  formatMoney,
+  describeCostDelta,
+  renderMarkdown,
+  renderSarif,
+  RULES,
+  VERSION,
+  PlanParseError,
+  ConfigError,
+};
 
 declare global {
   interface Window {

@@ -1,6 +1,6 @@
 {
   "name": "planlens",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Terraform plan reviewer — catches destroys, forced replacements, security regressions and IAM widening in pull requests. Risk score, sticky PR comment, SARIF, and a 100% client-side web UI.",
   "keywords": [
     "terraform",
@@ -13,7 +13,9 @@
     "sarif",
     "aws",
     "platform-engineering",
-    "policy-as-code"
+    "policy-as-code",
+    "infracost",
+    "finops"
   ],
   "homepage": "https://yousafkhamza.github.io/planlens/",
   "repository": {
@@ -62,7 +64,7 @@
     "@anthropic-ai/sdk": "^1.12.0",
     "@biomejs/biome": "^2.6.8",
     "@types/jsdom": "^21.1.7",
-    "@types/node": "^26.6.6",
+    "@types/node": "^22.20.5",
     "@vitest/coverage-v8": "^5.1.1",
     "ajv": "^8.20.0",
     "esbuild": "^0.28.2",

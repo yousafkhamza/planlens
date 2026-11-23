@@ -72,6 +72,41 @@ describe.runIf(existsSync(bundle))("web UI (docs/index.html + app.js)", () => {
     expect($("#result").textContent).toContain("Gate passed (fail-on: none)");
   });
 
+  it("shows the Infracost cost delta for the paired sample and filters findings", async () => {
+    const { $, w, tick } = boot();
+    expect(w.document.querySelector("[data-rule-count]")?.textContent).toBe("42");
+    $<HTMLButtonElement>('[data-sample="prod-change.json"]').click();
+    await tick();
+    const cost = $(".cost");
+    expect(cost.textContent).toContain("$2,140.50 → $2,552.80");
+    expect(cost.textContent).toContain("+$412.30/mo (+19%)");
+    expect(cost.querySelector("li code")?.textContent).toBe("module.data.aws_db_instance.payments");
+
+    const visible = () => [...w.document.querySelectorAll("#result .finding")].filter((n) => !(n as HTMLElement).hidden).length;
+    const total = visible();
+    const chip = [...w.document.querySelectorAll(".filter-bar .chip")].find((c) => c.textContent?.startsWith("critical")) as HTMLButtonElement;
+    chip.click();
+    expect(chip.getAttribute("aria-pressed")).toBe("false");
+    expect(visible()).toBeLessThan(total);
+    const q = $<HTMLInputElement>(".filter-bar input");
+    q.value = "cloudtrail";
+    q.dispatchEvent(new w.Event("input"));
+    expect(visible()).toBe(1);
+    q.value = "nothing-matches-this";
+    q.dispatchEvent(new w.Event("input"));
+    expect(visible()).toBe(0);
+    expect(($(".filter-empty") as HTMLElement).hidden).toBe(false);
+
+    // other samples clear the cost input; invalid cost JSON is reported
+    $<HTMLButtonElement>('[data-sample="lifecycle.json"]').click();
+    await tick();
+    expect($<HTMLTextAreaElement>("#infracost").value).toBe("");
+    expect(w.document.querySelector(".cost")).toBeNull();
+    $<HTMLTextAreaElement>("#infracost").value = "{}";
+    $<HTMLButtonElement>("#run").click();
+    expect($("#error").textContent).toMatch(/Infracost/);
+  });
+
   it("shows a clean state for a no-op plan", async () => {
     const { $, tick } = boot();
     $<HTMLButtonElement>('[data-sample="noop.json"]').click();
@@ -135,7 +170,7 @@ describe.runIf(existsSync(bundle))("web UI (docs/index.html + app.js)", () => {
     expect($("#tab-cli").hidden).toBe(false);
     expect($("#tab-gha").hidden).toBe(true);
     $("#t-cli").dispatchEvent(new w.KeyboardEvent("keydown", { key: "ArrowRight" }));
-    expect($("#tab-gitlab").hidden).toBe(false);
+    expect($("#tab-docker").hidden).toBe(false);
     $<HTMLButtonElement>("#theme").click();
     expect(w.document.documentElement.dataset.theme).toBe("dark");
   });

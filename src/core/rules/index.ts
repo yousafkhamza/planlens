@@ -1,3 +1,4 @@
+import { costIncrease } from "../cost.js";
 import type { Rule } from "../types.js";
 import {
   criticalDestroyed,
@@ -82,6 +83,7 @@ export const RULES: readonly Rule[] = [
   gcpIam,
   hardcodedSecrets,
   outputSecrets,
+  costIncrease,
 ];
 
 export function ruleById(id: string): Rule | undefined {

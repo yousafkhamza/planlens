@@ -74,7 +74,7 @@ steps:
       category: planlens
 ```
 
-Full examples: [single workspace](examples/github-actions/terraform-pr.yml) · [one comment per environment](examples/github-actions/multi-env-matrix.yml) · [GitLab CI](examples/gitlab/.gitlab-ci.yml)
+Full examples: [single workspace](examples/github-actions/terraform-pr.yml) · [one comment per environment](examples/github-actions/multi-env-matrix.yml) · [with Infracost](examples/github-actions/with-infracost.yml) · [GitLab CI](examples/gitlab/.gitlab-ci.yml)
 
 ### CLI
 
@@ -92,9 +92,18 @@ npx planlens envs/*/plan.json --format markdown -o comment.md \
 
 Exit codes: `0` gate passed · `1` findings at/above `--fail-on` · `2` usage or input error.
 
+### Docker (Jenkins, Azure DevOps, Bitbucket, Atlantis…)
+
+```bash
+docker run --rm -u "$(id -u)" -v "$PWD:/work" ghcr.io/yousafkhamza/planlens:1 plan.json \
+  --fail-on high --out markdown=planlens.md --out sarif=planlens.sarif
+```
+
+Multi-arch (amd64/arm64), non-root, base image pinned by digest, published with SBOM and provenance. Examples: [Azure DevOps](examples/azure-devops/azure-pipelines.yml) · [Jenkins](examples/jenkins/Jenkinsfile) · [Atlantis](examples/atlantis/repos.yaml)
+
 ## What it catches
 
-41 rules across AWS, Azure, GCP, Kubernetes and Helm. Full list with remediation: **[docs/rules.md](docs/rules.md)**.
+42 rules across AWS, Azure, GCP, Kubernetes and Helm, plus an optional cost budget. Full list with remediation: **[docs/rules.md](docs/rules.md)**.
 
 | Area | Examples |
 |---|---|
@@ -105,6 +114,7 @@ Exit codes: `0` gate passed · `1` findings at/above `--fail-on` · `2` usage or
 | **IAM** | `*:*` · `service:*` on `*` · privilege-escalation actions (iam:PassRole, CreatePolicyVersion, Attach/Put*Policy…) · AdministratorAccess-style attachments · `Principal: "*"` resource policies · **GitHub/EKS OIDC trust without `sub`** · roles assumable by anyone · public Lambda · Azure Owner/Contributor at subscription scope · GCP `allUsers` / primitive roles |
 | **Secrets** | AWS keys, private keys, GitHub/GitLab/Slack/Stripe/OpenAI/Anthropic tokens in attributes (incl. base64 `user_data`) · secret-named env vars with literal values (Lambda, ECS, App Service, Cloud Run, Kubernetes) · secret-looking outputs without `sensitive = true` · long-lived access keys |
 | **Hygiene** | Drift detected during refresh · imports · moved addresses |
+| **Cost** *(with Infracost)* | Monthly cost increase above an absolute or percentage budget |
 
 ## GitHub Action reference
 
@@ -121,6 +131,7 @@ Exit codes: `0` gate passed · `1` findings at/above `--fail-on` · `2` usage or
 | `github-token` | `${{ github.token }}` | Needs `pull-requests: write`. |
 | `step-summary` | `true` | Write the report to the job summary. |
 | `sarif-file` / `json-file` / `markdown-file` | `planlens.sarif` / `.json` / `.md` | Output paths. |
+| `infracost` | — | Path to `infracost breakdown --format json` output for the plan (see [Cost](#cost-infracost)). |
 | `ai` / `ai-model` | — | Optional advisory summary (see below). |
 
 **Outputs:** `passed`, `risk-score`, `risk-level`, `findings`, `critical`, `high`, `sarif-file`, `json-file`, `markdown-file`.
@@ -166,6 +177,24 @@ rules:                                      # org rules, no code
 
 Attribute operators: `exists`, `absent`, `equals`, `not_equals`, `matches`, `not_matches`, `in`, `not_in`, `changed`. Paths use dots and `[n]`; nested blocks are traversed automatically (`vpc_config.endpoint_public_access`).
 
+## Cost (Infracost)
+
+Put the monthly cost delta next to the risk review and gate on a budget:
+
+```bash
+infracost breakdown --path plan.json --format json --out-file infracost.json
+npx planlens plan.json --infracost infracost.json
+```
+
+```yaml
+# .planlens.yml
+cost:
+  max_monthly_increase: 500          # PL501 if the bill rises by more than $500/mo
+  max_monthly_increase_percent: 20   # …or by more than 20%
+```
+
+The PR comment shows `💰 Cost: $2,140.50 → $2,552.80 /mo (+$412.30/mo (+19%))` plus the largest per-resource deltas. In the Action, use the `infracost` input ([example](examples/github-actions/with-infracost.yml)).
+
 ## Optional AI summary
 
 ```bash
@@ -206,6 +235,7 @@ if (!report.passed) console.log(renderMarkdown([report]));
 | Rename / count-shift detection with `moved` fix | ✅ | ❌ | ❌ | ❌ |
 | Security regressions introduced by the PR | ✅ | ✅ (all, incl. existing) | ❌ | ❌ |
 | Works without cloud credentials | ✅ | ✅ | needs plan | ✅ |
+| Cost delta in the same review, budget gate | ✅ (reads Infracost JSON) | ❌ | ❌ | ✅ |
 
 They complement each other: run a static scanner on code and planlens on the plan.
 

@@ -57,6 +57,10 @@ inputs:
     description: Where to write the Markdown report.
     required: false
     default: planlens.md
+  infracost:
+    description: "Optional path to `infracost breakdown --format json` output for the plan. Adds the monthly cost delta to the report and enables PL501 when `cost:` thresholds are set in .planlens.yml. Single plan only."
+    required: false
+    default: ""
   ai:
     description: "Optional advisory AI summary: anthropic | openai | ollama. Credentials come from env (ANTHROPIC_API_KEY, OPENAI_API_KEY/OPENAI_BASE_URL, OLLAMA_HOST). Only addresses, actions and finding text are sent — never attribute values."
     required: false

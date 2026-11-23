@@ -35,7 +35,7 @@ describe.runIf(existsSync(bundlePath))("browser bundle (docs/assets/planlens.js)
   it("analyzes every demo sample", () => {
     const api = loadBundle();
     const levels: Record<string, string> = {};
-    for (const f of readdirSync(`${docs}samples`)) {
+    for (const f of readdirSync(`${docs}samples`).filter((x) => !x.endsWith(".infracost.json"))) {
       const plan = api.parsePlanText(readFileSync(`${docs}samples/${f}`, "utf8"));
       levels[f] = api.analyzePlan(plan, { name: f }).level;
     }

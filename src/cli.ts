@@ -39,6 +39,8 @@ Options:
                          (default: the plan file's directory)
       --ai <provider>    add an advisory AI summary: anthropic | openai | ollama
       --ai-model <name>  model for --ai (required for openai/ollama)
+      --infracost <file> add the monthly cost delta from "infracost breakdown --format json"
+                         (enables PL501 when cost thresholds are set in the config)
   -v, --verbose          show low/info findings and every change (text format)
       --no-color         disable ANSI colors (also honours NO_COLOR)
   -q, --quiet            print nothing to stdout (use with --out / --output)
@@ -99,6 +101,7 @@ export async function main(argv: string[], io: Io): Promise<number> {
         "source-dir": { type: "string" },
         ai: { type: "string" },
         "ai-model": { type: "string" },
+        infracost: { type: "string" },
         verbose: { type: "boolean", short: "v" },
         "no-color": { type: "boolean" },
         quiet: { type: "boolean", short: "q" },
@@ -166,6 +169,7 @@ export async function main(argv: string[], io: Io): Promise<number> {
       sourceDir: v["source-dir"],
       ai,
       aiModel: v["ai-model"],
+      infracost: v.infracost,
       cwd: io.cwd,
     });
     const { reports } = result;
