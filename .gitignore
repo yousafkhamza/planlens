@@ -1,0 +1,22 @@
+node_modules/
+coverage/
+# Build output — only the Action bundle is committed (action.yml runs it directly).
+dist/*
+!dist/action.cjs
+# Terraform working files
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+tf.plan
+.terraform.lock.hcl
+# planlens outputs
+planlens.sarif
+planlens.json
+planlens.md
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.log

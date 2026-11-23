@@ -1,0 +1,74 @@
+{
+  "name": "planlens",
+  "version": "1.0.0",
+  "description": "Terraform plan reviewer — catches destroys, forced replacements, security regressions and IAM widening in pull requests. Risk score, sticky PR comment, SARIF, and a 100% client-side web UI.",
+  "keywords": [
+    "terraform",
+    "terraform-plan",
+    "devsecops",
+    "iac",
+    "infrastructure-as-code",
+    "github-actions",
+    "code-review",
+    "sarif",
+    "aws",
+    "platform-engineering",
+    "policy-as-code"
+  ],
+  "homepage": "https://yousafkhamza.github.io/planlens/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yousafkhamza/planlens.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yousafkhamza/planlens/issues"
+  },
+  "license": "MIT",
+  "author": "Yousaf K Hamza",
+  "type": "module",
+  "bin": {
+    "planlens": "dist/cli.mjs"
+  },
+  "main": "./dist/index.mjs",
+  "types": "./dist/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/index.mjs"
+    }
+  },
+  "files": [
+    "dist/cli.mjs",
+    "dist/index.mjs",
+    "dist/types",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check src test scripts",
+    "format": "biome format --write src test scripts",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "fixtures": "node scripts/gen-fixtures.mjs",
+    "check": "npm run typecheck && npm run lint && npm run test:coverage && npm run build",
+    "prepublishOnly": "npm run check"
+  },
+  "devDependencies": {
+    "@anthropic-ai/sdk": "^1.12.0",
+    "@biomejs/biome": "^2.6.8",
+    "@types/jsdom": "^21.1.7",
+    "@types/node": "^22.10.0",
+    "@vitest/coverage-v8": "^5.1.1",
+    "ajv": "^8.20.0",
+    "esbuild": "^0.28.2",
+    "jsdom": "^26.1.0",
+    "typescript": "^5.9.3",
+    "vitest": "^5.1.1",
+    "yaml": "^2.9.1"
+  }
+}

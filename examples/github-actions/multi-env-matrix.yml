@@ -1,0 +1,38 @@
+# One job per environment, one sticky comment per environment (comment-id).
+name: terraform-matrix
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+
+permissions:
+  contents: read
+  id-token: write
+  pull-requests: write
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        env: [dev, staging, prod]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_wrapper: false
+      - working-directory: envs/${{ matrix.env }}
+        run: |
+          terraform init -input=false
+          terraform plan -input=false -lock=false -out=tf.plan
+          terraform show -json tf.plan > plan.json
+
+      - uses: yousafkhamza/planlens@v1
+        with:
+          plan: envs/${{ matrix.env }}/plan.json
+          comment-id: ${{ matrix.env }}
+          # stricter gate in prod
+          fail-on: ${{ matrix.env == 'prod' && 'medium' || 'high' }}

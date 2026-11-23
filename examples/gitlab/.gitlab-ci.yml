@@ -1,0 +1,36 @@
+# GitLab CI: review the plan, publish the Markdown report as an MR note,
+# and keep SARIF/JSON as artifacts.
+stages: [plan, review]
+
+plan:
+  stage: plan
+  image: hashicorp/terraform:1.9
+  script:
+    - terraform init -input=false
+    - terraform plan -input=false -out=tf.plan
+    - terraform show -json tf.plan > plan.json
+  artifacts:
+    paths: [plan.json]
+    expire_in: 1 week
+
+planlens:
+  stage: review
+  image: node:22-alpine
+  needs: [plan]
+  script:
+    - npx --yes planlens@1 plan.json --fail-on high --out markdown=planlens.md --out sarif=planlens.sarif --out json=planlens.json
+  after_script:
+    # Post (or update) the report on the merge request. Needs a project access
+    # token with `api` scope in PLANLENS_GITLAB_TOKEN.
+    - |
+      if [ -n "$CI_MERGE_REQUEST_IID" ] && [ -f planlens.md ]; then
+        apk add --no-cache curl jq >/dev/null
+        BODY=$(jq -Rs '{body: .}' < planlens.md)
+        curl -sS --fail -X POST -H "PRIVATE-TOKEN: $PLANLENS_GITLAB_TOKEN" -H "Content-Type: application/json" \
+          --data "$BODY" "$CI_API_V4_URL/projects/$CI_PROJECT_ID/merge_requests/$CI_MERGE_REQUEST_IID/notes"
+      fi
+  artifacts:
+    when: always
+    paths: [planlens.md, planlens.sarif, planlens.json]
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"

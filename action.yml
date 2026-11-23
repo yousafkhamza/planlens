@@ -1,0 +1,91 @@
+name: planlens Terraform Plan Review
+description: Catch destroys, forced replacements, security regressions and IAM widening in Terraform plans — risk score, sticky PR comment, SARIF and a merge gate.
+author: Yousaf K Hamza
+branding:
+  icon: shield
+  color: orange
+
+inputs:
+  plan:
+    description: Path(s) or glob(s) to `terraform show -json` output (newline or comma separated). Binary plan files are converted with terraform/tofu if available.
+    required: true
+  fail-on:
+    description: "Fail the step when a finding is at or above this severity: critical | high | medium | low | info | none. Defaults to the config file value, else `high`."
+    required: false
+    default: ""
+  config:
+    description: Path to a planlens config file. Defaults to .planlens.yml / .planlens.yaml / .planlens.json in working-directory.
+    required: false
+    default: ""
+  working-directory:
+    description: Directory that plan paths, config and outputs are relative to.
+    required: false
+    default: "."
+  source-dir:
+    description: Terraform root module directory, used to point SARIF results/annotations at .tf lines. Defaults to each plan file's directory.
+    required: false
+    default: ""
+  comment:
+    description: "Sticky PR comment: `always` (default), `changes` (only create when there are changes or findings; always update an existing one) or `never`."
+    required: false
+    default: always
+  comment-id:
+    description: Distinguishes multiple planlens comments on one PR (e.g. one per environment/job).
+    required: false
+    default: default
+  accept-risk-label:
+    description: A PR label that lets the gate pass (findings are still reported). Re-run the job after adding it, or trigger on `labeled`.
+    required: false
+    default: "planlens:accept-risk"
+  github-token:
+    description: Token used to post the PR comment. Needs `pull-requests: write`.
+    required: false
+    default: ${{ github.token }}
+  step-summary:
+    description: Write the report to the job summary.
+    required: false
+    default: "true"
+  sarif-file:
+    description: Where to write the SARIF report (upload it with github/codeql-action/upload-sarif).
+    required: false
+    default: planlens.sarif
+  json-file:
+    description: Where to write the JSON report.
+    required: false
+    default: planlens.json
+  markdown-file:
+    description: Where to write the Markdown report.
+    required: false
+    default: planlens.md
+  ai:
+    description: "Optional advisory AI summary: anthropic | openai | ollama. Credentials come from env (ANTHROPIC_API_KEY, OPENAI_API_KEY/OPENAI_BASE_URL, OLLAMA_HOST). Only addresses, actions and finding text are sent — never attribute values."
+    required: false
+    default: ""
+  ai-model:
+    description: Model for `ai` (required for openai/ollama).
+    required: false
+    default: ""
+
+outputs:
+  passed:
+    description: "`true` if the gate passed (or the accept-risk label was present)."
+  risk-score:
+    description: Highest risk score (0–100) across plans.
+  risk-level:
+    description: Highest risk level (critical | high | medium | low | none).
+  findings:
+    description: Number of active findings.
+  critical:
+    description: Number of critical findings.
+  high:
+    description: Number of high findings.
+  sarif-file:
+    description: Path of the SARIF report.
+  json-file:
+    description: Path of the JSON report.
+  markdown-file:
+    description: Path of the Markdown report.
+
+runs:
+  using: node24
+  main: dist/action.cjs

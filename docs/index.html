@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>planlens — Terraform plan reviewer</title>
+  <meta name="description" content="See what terraform apply will really do before you run it. planlens catches destroyed databases, forced replacements, opened security groups and widened IAM in pull requests. Free, open source, 100% client-side web UI.">
+  <meta property="og:title" content="planlens — Terraform plan reviewer">
+  <meta property="og:description" content="Catch destroys, forced replacements, security regressions and IAM widening in Terraform plans — before apply.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://yousafkhamza.github.io/planlens/">
+  <meta name="theme-color" content="#0b0f17">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230b0f17'/%3E%3Ccircle cx='14' cy='14' r='7' fill='none' stroke='%2338bdf8' stroke-width='3'/%3E%3Cpath d='M19 19l7 7' stroke='%2338bdf8' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip" href="#try">Skip to the analyzer</a>
+
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="#top" aria-label="planlens home">
+        <svg viewBox="0 0 32 32" width="28" height="28" aria-hidden="true"><rect width="32" height="32" rx="8" class="brand-bg"/><circle cx="14" cy="14" r="7" fill="none" stroke="currentColor" stroke-width="3"/><path d="M19 19l7 7" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>
+        <span>planlens</span>
+      </a>
+      <nav aria-label="Main">
+        <a href="#try">Try it</a>
+        <a href="#how">How it works</a>
+        <a href="#rules">Rules</a>
+        <a href="#install">Install</a>
+        <a href="#security">Security</a>
+      </nav>
+      <div class="nav-actions">
+        <button class="icon-btn" id="theme" type="button" aria-label="Toggle colour theme" title="Toggle theme">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.39 5.39 0 0 1-4.4 2.26 5.4 5.4 0 0 1-3.14-9.8c-.44-.06-.9-.1-1.36-.1z"/></svg>
+        </button>
+        <a class="btn btn-ghost" href="https://github.com/yousafkhamza/planlens" rel="noopener">
+          <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+          GitHub
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main id="top">
+    <!-- HERO -->
+    <section class="hero">
+      <div class="wrap hero-grid">
+        <div>
+          <p class="eyebrow">Terraform · DevSecOps · Platform engineering</p>
+          <h1>Know what <code>terraform&nbsp;apply</code> will <em>really</em> do.</h1>
+          <p class="lead">planlens reviews the <strong>plan</strong>, not the code. It catches destroyed databases, forced replacements, opened security groups and widened IAM in your pull requests, so you see them before production does.</p>
+          <div class="cta">
+            <a class="btn btn-primary" href="#try">Try it in your browser</a>
+            <a class="btn btn-ghost" href="#install">Add to CI in 2 minutes</a>
+          </div>
+          <ul class="pills" aria-label="Highlights">
+            <li>41 built-in rules</li>
+            <li>AWS · Azure · GCP · Kubernetes</li>
+            <li>Sticky PR comment + SARIF</li>
+            <li>Zero runtime dependencies</li>
+          </ul>
+        </div>
+        <figure class="pr-card" aria-label="Example pull request comment from planlens">
+          <div class="pr-head"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="pr-title">github-actions commented · infra#482</span></div>
+          <div class="pr-body">
+            <p class="pr-h">🔴 planlens — Risk <b>99/100</b> · CRITICAL</p>
+            <p class="pr-meta"><code>envs/prod</code> · 4 critical · 6 high · Gate ❌ failed</p>
+            <div class="pr-row"><span class="sev sev-critical">CRITICAL</span><code>module.data.aws_db_instance.payments</code> will be <b>REPLACED</b>. Existing data will not carry over.<small>Forced by: <code>storage_encrypted</code>: false → true · skip_final_snapshot = true</small></div>
+            <div class="pr-row"><span class="sev sev-critical">CRITICAL</span><code>aws_security_group.api</code> allows 0.0.0.0/0 on 5432 (PostgreSQL)</div>
+            <div class="pr-row"><span class="sev sev-critical">CRITICAL</span><code>aws_iam_role.github_deploy</code> trusts OIDC subject <code>repo:*</code></div>
+            <div class="pr-row"><span class="sev sev-high">HIGH</span>Renaming <code>reports_old</code> recreates the bucket.<small>Fix: <code>moved { from = … to = … }</code></small></div>
+          </div>
+        </figure>
+      </div>
+    </section>
+
+    <!-- PROBLEM -->
+    <section class="section problem" aria-labelledby="why">
+      <div class="wrap">
+        <h2 id="why" class="section-title">Reviewing Terraform PRs is broken</h2>
+        <div class="grid3">
+          <article class="card">
+            <h3>The plan is unreadable</h3>
+            <p>2,000 lines of plan output in a CI log. Reviewers skim the HCL diff, approve, and miss <code># must be replaced</code>.</p>
+          </article>
+          <article class="card">
+            <h3>Small diff, big blast radius</h3>
+            <p>A renamed resource, a reordered <code>count</code> list or one changed attribute destroys and recreates a database. The diff looks harmless; only the plan shows it.</p>
+          </article>
+          <article class="card">
+            <h3>Scanners read code, not change</h3>
+            <p>Static scanners flag config. They can't tell you that <em>this PR</em> turns deletion protection off, opens port 22, or replaces your prod subnet.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- TRY IT -->
+    <section class="section" id="try" aria-labelledby="try-title">
+      <div class="wrap">
+        <div class="section-head">
+          <h2 id="try-title" class="section-title">Try it — your plan never leaves this tab</h2>
+          <p class="muted">Everything runs in your browser. No upload, no analytics, no network calls (the page's Content-Security-Policy blocks them).</p>
+        </div>
+
+        <div class="analyzer">
+          <div class="input-panel">
+            <div class="samples" role="group" aria-label="Load a sample plan">
+              <span class="muted small">Samples:</span>
+              <button class="chip" type="button" data-sample="prod-change.json">Risky prod change</button>
+              <button class="chip" type="button" data-sample="aws-create.json">Insecure AWS stack</button>
+              <button class="chip" type="button" data-sample="lifecycle.json">Refactor + drift</button>
+              <button class="chip" type="button" data-sample="noop.json">Clean plan</button>
+            </div>
+
+            <label class="drop" id="drop" for="file">
+              <input type="file" id="file" accept=".json,application/json" hidden>
+              <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true"><path fill="currentColor" d="M19 15v4H5v-4H3v4a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-4h-2zm-7-12-5 5h3v6h4V8h3l-5-5z"/></svg>
+              <span><strong>Drop plan.json</strong> or click to choose</span>
+              <span class="muted small"><code>terraform plan -out=tf.plan &amp;&amp; terraform show -json tf.plan &gt; plan.json</code></span>
+            </label>
+
+            <label class="label" for="paste">…or paste the JSON</label>
+            <textarea id="paste" spellcheck="false" placeholder='{"format_version":"1.2","resource_changes":[…]}'></textarea>
+
+            <details class="config">
+              <summary>Options &amp; <code>.planlens.yml</code></summary>
+              <div class="config-body">
+                <label class="label" for="failon">Fail on</label>
+                <select id="failon">
+                  <option value="critical">critical</option>
+                  <option value="high" selected>high</option>
+                  <option value="medium">medium</option>
+                  <option value="low">low</option>
+                  <option value="none">none (report only)</option>
+                </select>
+                <label class="label" for="config">Config (YAML)</label>
+                <textarea id="config" class="short" spellcheck="false" placeholder="disable: [PL108]&#10;ignore:&#10;  - rule: PL201&#10;    address: aws_security_group.public_alb&#10;    reason: Public ALB behind WAF"></textarea>
+              </div>
+            </details>
+
+            <div class="run-row">
+              <button class="btn btn-primary" id="run" type="button">Review plan</button>
+              <button class="btn btn-ghost" id="clear" type="button">Clear</button>
+            </div>
+            <p class="error" id="error" role="alert" hidden></p>
+          </div>
+
+          <div class="result-panel" id="result" aria-live="polite">
+            <div class="empty">
+              <svg viewBox="0 0 24 24" width="40" height="40" aria-hidden="true"><path fill="currentColor" d="M10 2a8 8 0 0 1 6.32 12.9l5.39 5.4-1.41 1.4-5.4-5.38A8 8 0 1 1 10 2zm0 2a6 6 0 1 0 0 12 6 6 0 0 0 0-12z"/></svg>
+              <p>Load a sample or drop your own plan to see the review.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- HOW -->
+    <section class="section alt" id="how" aria-labelledby="how-title">
+      <div class="wrap">
+        <h2 id="how-title" class="section-title">How it works</h2>
+        <ol class="steps">
+          <li><span class="step-n">1</span><h3>Parse</h3><p>Reads <code>terraform show -json</code> (or the binary plan). It normalizes creates, updates, destroys, <b>replaces</b>, imports, moves and drift, and records <em>which attribute</em> forced each replacement.</p></li>
+          <li><span class="step-n">2</span><h3>Check</h3><p>41 rules look at <b>what this plan introduces</b>: data loss, blast radius, refactor mistakes, network exposure, IAM widening, disabled safeguards and plaintext secrets. Your own rules go in YAML.</p></li>
+          <li><span class="step-n">3</span><h3>Score</h3><p>A 0–100 risk score and a level per plan. Accepted risks need a reason and can expire, so exceptions don't become permanent debt.</p></li>
+          <li><span class="step-n">4</span><h3>Report &amp; gate</h3><p>A sticky PR comment, SARIF for the Security tab, inline annotations on the <code>.tf</code> line, a job summary and JSON. The exit code blocks the merge.</p></li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- FEATURES -->
+    <section class="section" aria-labelledby="features-title">
+      <div class="wrap">
+        <h2 id="features-title" class="section-title">Built for the people who approve the PR</h2>
+        <div class="grid3 features">
+          <article class="card"><h3>🧠 Explains <em>why</em></h3><p>"Forced by <code>storage_encrypted</code>: false → true", destroy-then-create ordering, deletion protection that will make the apply fail.</p></article>
+          <article class="card"><h3>🚚 Suggests the <code>moved</code> block</h3><p>Detects renames, moves into modules and <code>count</code> index shifts, and gives you the exact HCL that keeps the existing object.</p></article>
+          <article class="card"><h3>🔐 DevSecOps checks</h3><p>0.0.0.0/0 on admin/DB ports, <code>*:*</code>, iam:PassRole on <code>*</code>, GitHub OIDC trust without <code>sub</code>, public buckets, IMDSv1, plaintext keys.</p></article>
+          <article class="card"><h3>🧾 Audit-ready</h3><p>SARIF and JSON as change-review evidence (ISO 27001 A.8.32, PCI DSS 6.5, SOC 2 CC8). Ignores need a written reason.</p></article>
+          <article class="card"><h3>🧩 Org rules, no code</h3><p>"No destroys in <code>module.prod_*</code>", "CostCenter tag required". Match on actions, type and address globs, plus attribute conditions.</p></article>
+          <article class="card"><h3>🤖 Optional AI summary</h3><p>Claude, OpenAI-compatible or local Ollama write a plain-English review. It only receives addresses and findings, never values, and never decides pass/fail.</p></article>
+        </div>
+      </div>
+    </section>
+
+    <!-- RULES -->
+    <section class="section alt" id="rules" aria-labelledby="rules-title">
+      <div class="wrap">
+        <div class="section-head">
+          <h2 id="rules-title" class="section-title">Rule catalog</h2>
+          <p class="muted">Every rule can be disabled, re-rated or ignored per resource. <a href="https://github.com/yousafkhamza/planlens/blob/main/docs/rules.md">Full reference →</a></p>
+        </div>
+        <div class="rule-filters">
+          <input type="search" id="rule-search" placeholder="Search rules (e.g. iam, snapshot, PL306)" aria-label="Search rules">
+          <select id="rule-cat" aria-label="Filter by category"><option value="">All categories</option></select>
+        </div>
+        <div class="rule-grid" id="rule-grid"></div>
+      </div>
+    </section>
+
+    <!-- INSTALL -->
+    <section class="section" id="install" aria-labelledby="install-title">
+      <div class="wrap">
+        <h2 id="install-title" class="section-title">Add it to your pipeline</h2>
+        <div class="tabs" role="tablist" aria-label="Install options">
+          <button role="tab" aria-selected="true" aria-controls="tab-gha" id="t-gha">GitHub Actions</button>
+          <button role="tab" aria-selected="false" aria-controls="tab-cli" id="t-cli" tabindex="-1">CLI</button>
+          <button role="tab" aria-selected="false" aria-controls="tab-gitlab" id="t-gitlab" tabindex="-1">GitLab CI</button>
+          <button role="tab" aria-selected="false" aria-controls="tab-config" id="t-config" tabindex="-1">.planlens.yml</button>
+        </div>
+        <div class="tab-panels">
+          <div role="tabpanel" id="tab-gha" aria-labelledby="t-gha">
+            <div class="code"><button class="copy" type="button">Copy</button><pre><code>permissions:
+  contents: read
+  pull-requests: write      # sticky PR comment
+  security-events: write    # SARIF → Security tab
+
+steps:
+  - run: terraform plan -out=tf.plan &amp;&amp; terraform show -json tf.plan &gt; plan.json
+    working-directory: infra
+
+  - uses: yousafkhamza/planlens@v1
+    with:
+      plan: infra/plan.json
+      source-dir: infra          # annotate the exact .tf line
+      fail-on: high
+
+  - uses: github/codeql-action/upload-sarif@v4
+    if: always()
+    with:
+      sarif_file: planlens.sarif</code></pre></div>
+            <p class="muted small">Add the <code>planlens:accept-risk</code> label to a PR to let a reviewed risk through. The report is still posted.</p>
+          </div>
+          <div role="tabpanel" id="tab-cli" aria-labelledby="t-cli" hidden>
+            <div class="code"><button class="copy" type="button">Copy</button><pre><code># no install needed (Node ≥ 20)
+npx planlens plan.json
+
+# binary plans are converted automatically
+npx planlens tf.plan --fail-on critical
+
+# many workspaces, several outputs at once
+npx planlens envs/*/plan.json \
+  --format markdown -o comment.md \
+  --out sarif=planlens.sarif --out json=planlens.json
+
+# exit codes: 0 passed · 1 gate failed · 2 usage/input error</code></pre></div>
+          </div>
+          <div role="tabpanel" id="tab-gitlab" aria-labelledby="t-gitlab" hidden>
+            <div class="code"><button class="copy" type="button">Copy</button><pre><code>planlens:
+  stage: review
+  image: node:22-alpine
+  needs: [plan]
+  script:
+    - npx --yes planlens@1 plan.json --fail-on high
+        --out markdown=planlens.md --out sarif=planlens.sarif
+  artifacts:
+    when: always
+    paths: [planlens.md, planlens.sarif]</code></pre></div>
+          </div>
+          <div role="tabpanel" id="tab-config" aria-labelledby="t-config" hidden>
+            <div class="code"><button class="copy" type="button">Copy</button><pre><code>fail_on: high
+stateful_types: ["mongodbatlas_cluster"]
+severity_overrides:
+  PL204: high
+ignore:
+  - rule: PL201
+    address: "module.edge.aws_security_group.public_alb"
+    reason: "Public ALB by design, fronted by WAF (SEC-1234)"
+    expires: 2027-06-30
+rules:
+  - id: ORG001
+    title: No destroys in production modules
+    severity: critical
+    when:
+      actions: [delete, replace]
+      address: "module.prod_*"</code></pre></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECURITY / FAQ -->
+    <section class="section alt" id="security" aria-labelledby="sec-title">
+      <div class="wrap">
+        <h2 id="sec-title" class="section-title">Security model &amp; FAQ</h2>
+        <div class="faq">
+          <details open><summary>Plan JSON contains secrets. Is it safe to use this?</summary><p>Yes. Terraform plan JSON includes sensitive values in plain text (only marked as sensitive). planlens never prints values that Terraform marks sensitive, never sends plan data anywhere, and this web page runs fully offline in your browser. In CI it runs on your runner. The only network call it ever makes is the PR comment to your GitHub API, plus the optional AI summary if you turn it on.</p></details>
+          <details><summary>What exactly does the optional AI summary send?</summary><p>Resource addresses, action types (create/replace/…), names of changed attributes and the finding messages. Account IDs, emails and IPs are masked. Attribute values are never sent. Use <code>ai: ollama</code> to keep everything on your network. The AI can't change the pass/fail result.</p></details>
+          <details><summary>How is this different from Checkov / tfsec / Trivy?</summary><p>Those scan your <em>code</em> for misconfigurations, and they're great. planlens reviews the <em>change</em>: what gets destroyed or replaced and why, what this PR newly exposes, and whether a rename recreates your database. Use both.</p></details>
+          <details><summary>Does it need cloud credentials?</summary><p>No. It only reads the plan you already produced. No AWS/Azure/GCP API calls.</p></details>
+          <details><summary>Does it work with OpenTofu, Terragrunt and monorepos?</summary><p>Yes. The plan JSON format is the same; binary plans are converted with <code>terraform</code> or <code>tofu</code>. Pass several plans or a glob, and each gets its own section, with one combined gate.</p></details>
+          <details><summary>What about pull requests from forks?</summary><p>Fork PRs get a read-only token, so planlens can't comment. It still writes the job summary, annotations and SARIF, and tells you how to fix the permissions.</p></details>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap footer-inner">
+      <p>planlens <span id="ver"></span> · MIT licensed · built by <a href="https://yousafkhamza.github.io">Yousaf K Hamza</a></p>
+      <p><a href="https://github.com/yousafkhamza/planlens">GitHub</a> · <a href="https://github.com/yousafkhamza/planlens/blob/main/docs/rules.md">Rules</a> · <a href="https://github.com/yousafkhamza/planlens/blob/main/SECURITY.md">Security policy</a></p>
+    </div>
+  </footer>
+
+  <script src="assets/planlens.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,4 @@
+* text=auto eol=lf
+dist/action.cjs linguist-generated=true -diff
+docs/assets/planlens.js linguist-generated=true -diff
+test/fixtures/** linguist-vendored=true

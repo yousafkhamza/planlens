@@ -1,0 +1,67 @@
+# .planlens.yml — put this at the root of your Terraform repo (or pass --config).
+# Every key is optional. Unknown keys are rejected so typos fail loudly.
+
+# Fail the pipeline when a finding is at or above this severity.
+# critical | high | medium | low | info | none
+fail_on: high
+
+# How many destroys/replaces in one plan triggers PL005 (mass destroy).
+mass_destroy_threshold: 10
+
+# Extra resource types to treat as data-holding (PL001/PL002 critical) or
+# high blast radius (PL003). Globs are allowed.
+stateful_types:
+  - "mongodbatlas_cluster"
+  - "confluent_kafka_topic"
+critical_types:
+  - "cloudflare_record"
+
+# Turn off rules that do not fit your org.
+disable:
+  - PL108 # KMS key rotation (we use imported key material)
+
+# Re-rate rules for your context.
+severity_overrides:
+  PL204: high # public EKS API endpoint is a hard no here
+
+# Accepted risks. A reason is mandatory; `expires` makes the exception
+# re-surface automatically so it does not become permanent debt.
+ignore:
+  - rule: PL201
+    address: "module.edge.aws_security_group.public_alb"
+    reason: "Public ALB by design — fronted by WAF (SEC-1234)"
+  - rule: PL001
+    address: "module.sandbox.*"
+    reason: "Sandbox environment is rebuilt nightly"
+    expires: 2027-06-30
+
+# Organisation-specific rules, no code needed.
+rules:
+  - id: ORG001
+    title: No destroys in production modules
+    severity: critical
+    message: "{address} would be {action}d in production — needs a change ticket."
+    remediation: Get CAB approval and apply the planlens:accept-risk label.
+    when:
+      actions: [delete, replace]
+      address: "module.prod_*"
+
+  - id: ORG002
+    title: CostCenter tag is mandatory
+    severity: medium
+    when:
+      actions: [create]
+      type: ["aws_instance", "aws_db_instance", "aws_eks_node_group"]
+      attributes:
+        - path: tags.CostCenter
+          op: absent
+
+  - id: ORG003
+    title: No oversized instances without review
+    severity: high
+    when:
+      type: aws_instance
+      attributes:
+        - path: instance_type
+          op: matches
+          value: "\\.(12|16|24|32|48|metal)xlarge$|\\.metal$"
